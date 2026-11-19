@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>auditgym · тренажёр ИИ-аудитора</title>
+  <title>auditgym</title>
   <meta name="description" content="RL-среда для ИИ-аудитора: синтетические компании, скрытые финансовые ошибки, эталон и доказательства.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 21l4-10 4 7 3-4 3 7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,18 +20,18 @@
         </div>
         <div>
           <div class="brand-name">auditgym</div>
-          <div class="brand-sub">Тренажёр для ИИ-аудитора</div>
+          <div class="brand-sub">Среда для ИИ-аудитора</div>
         </div>
       </div>
 
       <section class="gen">
         <div class="section-title">Новая компания</div>
         <label class="field">
-          <span>Что спрятать в данных</span>
+          <span>Набор ошибок</span>
           <select id="gen-preset"></select>
         </label>
         <label class="field">
-          <span>Номер варианта</span>
+          <span>Вариант</span>
           <div class="seed-row">
             <input id="gen-seed" type="number" min="0" max="1000000000" value="42">
             <button class="icon-btn" id="gen-dice" title="Случайный вариант" aria-label="Случайный вариант">
@@ -39,8 +39,8 @@
             </button>
           </div>
         </label>
-        <button class="btn primary wide" id="gen-go">Создать компанию</button>
-        <p class="hint">Каждый номер — своя вымышленная компания. Один и тот же номер всегда даёт ровно ту же компанию.</p>
+        <button class="btn primary wide" id="gen-go">Создать</button>
+        <p class="hint">Один и тот же вариант всегда даёт одну и ту же компанию.</p>
       </section>
 
       <nav class="episodes" id="episode-list" aria-label="Открытые эпизоды"></nav>
@@ -57,7 +57,7 @@
           <div class="meta" id="meta"></div>
         </div>
         <div class="top-actions">
-          <label class="switch" title="Показать спрятанные ошибки и доказательства — то, чего ИИ-аудитор не видит">
+          <label class="switch" title="Ошибки и доказательства из эталона. Агенту они недоступны.">
             <input type="checkbox" id="reviewer">
             <span class="track"><span class="thumb"></span></span>
             <span class="switch-label">Показать ответы</span>
