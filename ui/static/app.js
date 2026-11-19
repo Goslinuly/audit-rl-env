@@ -8,30 +8,30 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
 };
 
-/* ------------------------------------------------------------------ human labels */
+/* ------------------------------------------------------------------ labels */
 const TYPE_RU = {
   duplicate_invoice: "Дубль счёта",
-  payment_allocation: "Платёж не разнесён",
+  payment_allocation: "Платёж не зачтён",
   fx_conversion: "Неверный курс",
-  period_cutoff: "Не тот период",
+  period_cutoff: "Не тот месяц",
 };
 const TYPE_HINT = {
-  duplicate_invoice: "Счёт внесён дважды под разными номерами, выручка завышена.",
-  payment_allocation: "Деньги пришли, но не зачтены в оплату счёта или зачтены не полностью.",
+  duplicate_invoice: "Один счёт внесён дважды под разными номерами. Выручка завышена.",
+  payment_allocation: "Деньги от покупателя пришли, но не зачтены в оплату счёта или зачтены не полностью.",
   fx_conversion: "Валютный документ пересчитан по курсу другой даты.",
-  period_cutoff: "Документ другого месяца проведён в текущем периоде.",
+  period_cutoff: "Документ другого месяца проведён в этом.",
 };
 const GROUP_RU = {
-  A: "Сценарий A: частичный валютный платёж на стыке месяцев",
+  A: "Сценарий A: один валютный платёж на стыке месяцев, три ошибки сразу",
   B: "Сценарий B: дубль валютного счёта, оплаченный по неверному курсу",
 };
 const DISTRACTOR_RU = {
-  split_payment: "Оплата несколькими платежами",
-  partial_payment: "Частичная оплата",
+  split_payment: "Счёт оплачен несколькими платежами",
+  partial_payment: "Счёт оплачен частично",
   recurring: "Еженедельные счета на одну сумму",
-  refund: "Двойная оплата с возвратом",
+  refund: "Двойная оплата, деньги вернули",
   boundary: "Документ на стыке месяцев",
-  next_period_invoice: "Счёт следующего месяца",
+  next_period_invoice: "Счёт следующего месяца, не проведён",
   weekend_fx: "Документ в выходной, курс пятницы",
   prior_invoice: "Счёт прошлого месяца",
 };
@@ -47,7 +47,7 @@ const PRESET_RU = {
 const SPLIT_RU = { sample: "Пример", train: "Обучающая", dev: "Проверочная" };
 const SPLIT_GROUP_RU = { sample: "Пример", train: "Обучающие", dev: "Проверочные" };
 const CCY_RU = { KZT: "тенге", USD: "доллар США", EUR: "евро", JPY: "иена" };
-const CCY_GEN = { KZT: "тенге", USD: "долларах США", EUR: "евро", JPY: "иенах" };
+const CCY_IN = { KZT: "тенге", USD: "долларах США", EUR: "евро", JPY: "иенах" };
 const MONTHS = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
 const ACCOUNT_RU = {
   accounts_receivable: "Долги покупателей",
@@ -65,34 +65,21 @@ const ACCOUNT_RU = {
   "expense:office": "Офисные расходы",
   "expense:marketing": "Маркетинг",
 };
-const CHANGE_FIELD_RU = {
-  document: "документ",
-  "_book.booked": "проведён в учёте",
-  "_book.ledger_ts": "дата проводки",
-  "_book.rate_date": "дата курса",
-  invoice_refs: "разнесение по счетам",
-};
-const NOTE_RU = {
-  missing: "не разнесён",
-  partial: "разнесён частично",
-  utc_date: "взята дата по UTC, а не местная",
-  next_business_day: "взят курс следующего дня",
-  stale: "взят устаревший курс",
-  due_date: "взят курс на дату срока оплаты",
-  early: "документ следующего месяца",
-  early_tz: "документ следующего месяца, в UTC выглядит как текущий",
-  late: "документ прошлого месяца",
-};
-const TABLE_RU = { invoices: "Счёт покупателю", payments: "Платёж", ledger: "Строка журнала", fx: "Курс валюты" };
+const TABLE_RU = { invoices: "Счёт", payments: "Платёж", ledger: "Строка журнала", fx: "Курс" };
+const TABS = [
+  ["invoices", "Счета", "Счета, выставленные покупателям. Клик по строке покажет оплаты и проводку."],
+  ["payments", "Платежи", "Деньги от покупателей и возвраты. В колонке «Зачтён в» видно, какой счёт оплачен."],
+  ["ledger", "Журнал проводок", "Все проводки месяца в валюте учёта. В каждой проводке дебет равен кредиту."],
+  ["fx", "Курсы валют", "Курсы публикуются по рабочим дням. В выходные действует последний опубликованный."],
+];
 
 function accName(code) {
-  if (code.startsWith("bank:")) return `Банк, счёт в ${CCY_GEN[code.slice(5)] || code.slice(5)}`;
+  if (code.startsWith("bank:")) return `Банк, счёт в ${CCY_IN[code.slice(5)] || code.slice(5)}`;
   return ACCOUNT_RU[code] || code;
 }
 function accCell(code) { return `<span class="acc"><span>${esc(accName(code))}</span><small>${esc(code)}</small></span>`; }
 function epLabel(split, name) {
-  const n = Number(name.split("_").pop()) + 1;
-  return split === "sample" ? "Пример" : `${SPLIT_RU[split] || split} №${n}`;
+  return split === "sample" ? "Пример" : `${SPLIT_RU[split] || split} №${Number(name.split("_").pop()) + 1}`;
 }
 function monthLabel(iso) { return `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`; }
 function plural(n, one, few, many) {
@@ -101,18 +88,18 @@ function plural(n, one, few, many) {
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
   return many;
 }
-function roundingRu(mode) { return mode === "ROUND_HALF_EVEN" ? "банковское (к чётному)" : "математическое (половина вверх)"; }
+function countWord(n, one, few, many) { return `${n} ${plural(n, one, few, many)}`; }
+function listRu(items) { return items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} и ${items[items.length - 1]}`; }
+function roundingRu(mode) { return mode === "ROUND_HALF_EVEN" ? "банковское, к чётному" : "математическое, половина вверх"; }
 function tzRu(tz) { return `UTC${tz.replace("-", "−")}`; }
 
 const state = {
-  presets: [],
   episodes: [],
   src: null,
   data: null,
   ix: null,
-  reviewer: store.get("auditgym.reviewer", false),
-  introHidden: store.get("auditgym.introHidden", false),
-  tab: "overview",
+  answers: store.get("auditgym.answers", false),
+  tab: "invoices",
   f: {},
   page: 0,
 };
@@ -172,31 +159,26 @@ function moneyText(minor, ccy) {
 }
 function money(minor, ccy) {
   const e = state.ix.exp[ccy] ?? 2;
-  const v = minor / 10 ** e;
-  return `${v.toLocaleString("ru-RU", { minimumFractionDigits: e, maximumFractionDigits: e })} <span class="faint">${esc(ccy)}</span>`;
+  return `${(minor / 10 ** e).toLocaleString("ru-RU", { minimumFractionDigits: e, maximumFractionDigits: e })} <span class="faint">${esc(ccy)}</span>`;
 }
-function localDate(ts) { return new Date(Date.parse(ts) + state.ix.tzMin * 60000); }
 function ruDateTime(ts) {
-  const d = localDate(ts).toISOString();
+  const d = new Date(Date.parse(ts) + state.ix.tzMin * 60000).toISOString();
   return `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)} ${d.slice(11, 16)}`;
 }
-function ruDate(ts) { return ruDateTime(ts).slice(0, 10); }
 function isoDateRu(iso) { return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`; }
-function writtenInCompanyTz(ts) { return ts.endsWith(state.ix.m.timezone); }
 function tsCell(ts) {
   const local = `<span class="mono">${esc(ruDateTime(ts))}</span>`;
-  if (writtenInCompanyTz(ts)) return local;
-  return `${local} <span class="chip info" title="В документе время указано в UTC, здесь пересчитано в пояс компании">UTC</span><span class="ts-local">в документе ${esc(ts.slice(0, 16).replace("T", " "))} UTC</span>`;
+  if (ts.endsWith(state.ix.m.timezone)) return local;
+  return `${local}<span class="ts-local">в документе ${esc(ts.slice(0, 16).replace("T", " "))} UTC</span>`;
 }
 function inPeriod(ts) { const t = Date.parse(ts); return t >= state.ix.start && t < state.ix.end; }
 function refLink(ref, label) {
-  const shown = label ?? ref.split(":").slice(1).join(":");
-  return `<span class="idlink" data-ref="${esc(ref)}" title="Открыть">${esc(shown)}</span>`;
+  return `<span class="idlink" data-ref="${esc(ref)}" title="Открыть">${esc(label ?? ref.split(":").slice(1).join(":"))}</span>`;
 }
 function refHuman(ref) {
   const [t, ...rest] = ref.split(":");
   const id = rest.join(":");
-  if (t === "fx") { const [d, s, g] = id.split("/"); return refLink(ref, `курс ${s}→${g} на ${isoDateRu(d)}`); }
+  if (t === "fx") { const [d, s, g] = id.split("/"); return refLink(ref, `курс ${s}/${g} на ${isoDateRu(d)}`); }
   if (t === "ledger") return refLink(ref, `строка журнала ${id}`);
   if (t === "invoices") return refLink(ref, `счёт ${id}`);
   if (t === "payments") return refLink(ref, `платёж ${id}`);
@@ -204,40 +186,37 @@ function refHuman(ref) {
 }
 function dash(v, ref) { return v == null ? '<span class="faint">—</span>' : ref ? refLink(ref) : esc(v); }
 function hlClass(ref) {
-  if (!state.reviewer) return "";
+  if (!state.answers) return "";
   if (state.ix.affected.has(ref)) return "hl-affected";
   if (state.ix.evidence.has(ref)) return "hl-evidence";
   return "";
 }
-function typeChip(t) { return `<span class="chip bad" title="${esc(TYPE_HINT[t])}">${esc(TYPE_RU[t] || t)}</span>`; }
-
-/* ------------------------------------------------------------------ issue texts */
 function docOf(ref) {
   const [t, ...rest] = ref.split(":");
   const id = rest.join(":");
   return t === "invoices" ? `счёт ${id}` : t === "payments" ? `платёж ${id}` : id;
 }
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+
 function issueText(is) {
   const amt = moneyText(is.expected_amount_minor, is.currency);
   const aff = is.affected_ids;
   const ev = is.evidence_sets[0] || [];
   if (is.type === "duplicate_invoice") {
     const orig = ev.find((x) => x.startsWith("invoices:") && !aff.includes(x));
-    return `${cap(docOf(aff[0]))} повторяет счёт ${orig ? orig.slice(9) : "?"}: покупатель, позиции и сумма совпадают. Копия проведена второй раз, выручка завышена на ${amt}.`;
+    return `${cap(docOf(aff[0]))} повторяет счёт ${orig ? orig.slice(9) : "?"}: покупатель, позиции и сумма совпадают. Его провели второй раз, выручка завышена на ${amt}.`;
   }
   if (is.type === "payment_allocation") {
     const pay = aff.find((x) => x.startsWith("payments:"));
     const inv = aff.find((x) => x.startsWith("invoices:"));
-    return `${cap(docOf(pay))} относится к ${docOf(inv)}, но ${amt} остались на нераспределённых поступлениях. Счёт числится неоплаченным.`;
+    return `${cap(docOf(pay))} пришёл в оплату счёта ${inv.slice(9)}, но ${amt} не зачтены и лежат на нераспределённых поступлениях. Счёт числится неоплаченным.`;
   }
   if (is.type === "fx_conversion") {
     const fx = ev.find((x) => x.startsWith("fx:"));
-    const date = fx ? isoDateRu(fx.slice(3, 13)) : "?";
-    return `${cap(docOf(aff[0]))} пересчитан по курсу не той даты. Нужен курс на ${date}, местную дату документа. Расхождение ${amt}.`;
+    return `${cap(docOf(aff[0]))} пересчитан по курсу не той даты. Нужен курс на ${fx ? isoDateRu(fx.slice(3, 13)) : "?"}, это дата документа по времени компании. Расхождение ${amt}.`;
   }
   if (is.type === "period_cutoff") {
-    return `${cap(docOf(aff[0]))} по времени компании относится к другому месяцу, но проведён в этом периоде. Сумма ${amt}.`;
+    return `${cap(docOf(aff[0]))} по времени компании относится к другому месяцу, но проведён в этом. Сумма ${amt}.`;
   }
   return is.description;
 }
@@ -251,7 +230,7 @@ function parseHash() {
 }
 function srcHash(src, tab) {
   const base = src.kind === "open" ? `#/open/${src.split}/${src.name}` : `#/gen/${src.preset}/${src.seed}`;
-  return tab && tab !== "overview" ? `${base}/${tab}` : base;
+  return tab && tab !== "invoices" ? `${base}/${tab}` : base;
 }
 function sameSrc(a, b) { return a && b && JSON.stringify(a) === JSON.stringify(b); }
 
@@ -262,7 +241,7 @@ async function route() {
     if (first) location.replace(srcHash({ kind: "open", split: first.split, name: first.name }));
     return;
   }
-  state.tab = r.tab || "overview";
+  state.tab = TABS.some(([k]) => k === r.tab) ? r.tab : "invoices";
   if (!sameSrc(r.src, state.src)) {
     state.src = r.src;
     state.f = {};
@@ -283,9 +262,8 @@ async function loadEpisode() {
   } catch (e) {
     state.data = null;
     state.ix = null;
-    $("#company").textContent = "Не удалось загрузить компанию";
-    $("#meta").textContent = e.message;
-    $("#view").innerHTML = `<div class="card"><div class="empty">${esc(e.message)}</div></div>`;
+    $("#company-head").innerHTML = `<h1>Не удалось загрузить компанию</h1><p class="lead">${esc(e.message)}</p>`;
+    $("#view").innerHTML = "";
   }
   if (s.kind === "gen") {
     $("#gen-preset").value = s.preset;
@@ -293,7 +271,17 @@ async function loadEpisode() {
   }
 }
 
-/* ------------------------------------------------------------------ sidebar */
+/* ------------------------------------------------------------------ render */
+function renderAll() {
+  renderSidebar();
+  if (!state.ix) return;
+  renderCompany();
+  renderModes();
+  renderAnswers();
+  renderTabs();
+  renderView();
+}
+
 function renderSidebar() {
   let html = "";
   for (const split of ["sample", "train", "dev"]) {
@@ -302,12 +290,12 @@ function renderSidebar() {
     html += `<div class="ep-group"><div class="section-title">${SPLIT_GROUP_RU[split]}</div>`;
     for (const e of eps) {
       const active = state.src && state.src.kind === "open" && state.src.split === split && state.src.name === e.name;
-      const badge = state.reviewer
-        ? e.issues ? `<span class="chip bad" >${e.issues} ${plural(e.issues, "ошибка", "ошибки", "ошибок")}</span>` : '<span class="chip good">без ошибок</span>'
+      const badge = state.answers
+        ? e.issues ? `<span class="chip bad">${countWord(e.issues, "ошибка", "ошибки", "ошибок")}</span>` : '<span class="chip good">без ошибок</span>'
         : "";
       html += `<a class="ep${active ? " active" : ""}" href="${srcHash({ kind: "open", split, name: e.name })}">
         <span class="ep-name">${esc(e.company_name)}</span>${badge}
-        <span class="ep-sub">${esc(epLabel(split, e.name))} · ${esc(monthLabel(e.period_start))} · ${esc(CCY_RU[e.base_currency] || e.base_currency)} · ${e.counts.ledger_rows} проводок</span>
+        <span class="ep-sub">${esc(epLabel(split, e.name))}, ${esc(monthLabel(e.period_start))}</span>
       </a>`;
     }
     html += "</div>";
@@ -315,197 +303,96 @@ function renderSidebar() {
   $("#episode-list").innerHTML = html;
 }
 
-/* ------------------------------------------------------------------ header */
-function renderHeader() {
+function renderCompany() {
   const ix = state.ix;
-  if (!ix) return;
   const m = ix.m;
-  const srcLabel = state.src.kind === "open"
-    ? `<span class="chip accent">${esc(epLabel(state.src.split, state.src.name))}</span>`
-    : `<span class="chip accent">${esc(PRESET_RU[state.src.preset] || state.src.preset)}, вариант ${esc(state.src.seed)}</span>`;
-  const others = Object.keys(m.currencies).filter((c) => c !== m.base_currency);
-  $("#company").textContent = m.company_name;
-  $("#meta").innerHTML = `${srcLabel}
-    <span>Период <b>${esc(isoDateRu(m.period_start))}–${esc(ruDate(new Date(ix.end - 60000).toISOString()))}</b></span>
-    <span>Часовой пояс <b>${esc(tzRu(m.timezone))}</b></span>
-    <span>Валюта учёта <b>${esc(m.base_currency)}</b></span>
-    ${others.length ? `<span>Другие валюты <b>${esc(others.join(", "))}</b></span>` : ""}
-    <span>Округление <b>${esc(roundingRu(m.rounding.mode))}</b></span>`;
-
-  const banner = $("#mode-banner");
-  banner.className = "mode-banner" + (state.reviewer ? " reviewer" : "");
-  banner.innerHTML = state.reviewer
-    ? `<span class="dot"></span><span><b>Ответы включены.</b> Красным выделены ошибки, жёлтым доказательства. Агент этого не видит. ${ix.issues.length ? `<button class="link-btn" data-tab="issues">Все ошибки</button>` : ""}</span>`
-    : '<span class="dot"></span><span>Сейчас видно то же, что получает агент: документы и журнал проводок. Ответы включаются справа вверху.</span>';
-
-  const c = m.counts;
-  const debit = state.data.public.ledger.reduce((s, r) => s + r.debit_minor, 0);
-  const credit = state.data.public.ledger.reduce((s, r) => s + r.credit_minor, 0);
-  const issues = ix.issues.length;
-  const kinds = new Set(ix.issues.map((i) => i.type)).size;
-  const booked = state.data.public.invoices.filter((i) => ix.rowsByInv.has(i.invoice_id)).length;
-  const refunds = state.data.public.payments.filter((p) => p.kind === "refund").length;
-  $("#stats").innerHTML = [
-    stat("Журнал проводок", c.ledger_rows, plural(c.ledger_rows, "строка", "строки", "строк"), "", "ledger"),
-    stat("Счета", c.invoices, `в учёте ${booked}`, "", "invoices"),
-    stat("Платежи", c.payments, refunds ? `возвратов ${refunds}` : "без возвратов", "", "payments"),
-    stat("Курсы", c.fx_rates, "рабочие дни", "", "fx"),
-    stat("Баланс", debit === credit ? "сходится" : "не сходится", "дебет равен кредиту", debit === credit ? "good small" : "bad small"),
-    state.reviewer
-      ? stat("Ошибки", issues, issues ? `${kinds} ${plural(kinds, "вид", "вида", "видов")}` : "нет", issues ? "bad" : "good", issues ? "issues" : null)
-      : stat("Ошибки", "?", "скрыто"),
-  ].join("");
-}
-function stat(label, value, note, cls = "", tab = null) {
-  return `<div class="stat ${cls}${tab ? " clickable" : ""}"${tab ? ` data-tab="${tab}" title="Открыть"` : ""}><div class="stat-label">${esc(label)}</div><div class="stat-value">${esc(value)}</div><div class="stat-note">${esc(note)}</div></div>`;
-}
-
-/* ------------------------------------------------------------------ tabs */
-function tabs() {
   const p = state.data.public;
-  const t = [
-    ["overview", "Обзор"],
-    ["ledger", "Журнал", p.ledger.length],
-    ["invoices", "Счета", p.invoices.length],
-    ["payments", "Платежи", p.payments.length],
-    ["fx", "Курсы", p.fx.length],
-  ];
-  if (state.reviewer) {
-    t.push(["issues", "Ошибки", state.ix.issues.length, "danger"]);
-    t.push(["provenance", "Генерация", null, "danger"]);
-  }
-  return t;
+  const tag = state.src.kind === "open"
+    ? epLabel(state.src.split, state.src.name)
+    : `${PRESET_RU[state.src.preset] || state.src.preset}, вариант ${state.src.seed}`;
+  const others = Object.keys(m.currencies).filter((c) => c !== m.base_currency);
+  const lead = `Вымышленная компания, отчётный месяц <b>${esc(monthLabel(m.period_start))}</b>. Учёт ведётся в <b>${esc(CCY_IN[m.base_currency])}</b>${
+    others.length ? `, часть документов в ${esc(listRu(others.map((c) => CCY_IN[c] || c)))}` : ""
+  }. В данных ${countWord(p.invoices.length, "счёт", "счёта", "счетов")}, ${countWord(p.payments.length, "платёж", "платежа", "платежей")} и ${countWord(p.ledger.length, "строка", "строки", "строк")} в журнале проводок.`;
+  $("#company-head").innerHTML = `
+    <h1>${esc(m.company_name)}<span class="tag">${esc(tag)}</span></h1>
+    <p class="lead">${lead}</p>
+    <details class="rules"><summary>Правила учёта</summary><ul>
+      <li>Период: с ${esc(ruDateTime(m.period_start))} до ${esc(ruDateTime(m.period_end))}, время компании ${esc(tzRu(m.timezone))}.</li>
+      <li>Дата документа считается по времени компании, даже если в документе время указано в UTC.</li>
+      <li>Валютные суммы пересчитываются по курсу на дату документа. В выходные действует последний опубликованный курс.</li>
+      <li>При оплате валютного счёта долг списывается по курсу счёта, разница идёт в курсовые разницы.</li>
+      <li>Округление ${esc(roundingRu(m.rounding.mode))}, до минимальной единицы валюты.</li>
+    </ul></details>`;
 }
+
+function renderModes() {
+  const n = state.ix.issues.length;
+  const answersSub = n ? countWord(n, "ошибка", "ошибки", "ошибок") : "ошибок нет";
+  $("#modes").innerHTML = `
+    <button class="mode${state.answers ? "" : " active"}" data-mode="data" role="tab" aria-selected="${!state.answers}"><b>Данные</b><span>то, что видит агент</span></button>
+    <button class="mode answers${state.answers ? " active" : ""}" data-mode="answers" role="tab" aria-selected="${state.answers}"><b>Ответы</b><span>${esc(answersSub)}</span></button>`;
+  $("#mode-hint").textContent = state.answers
+    ? "Ошибки выделены в таблицах красным, доказательства жёлтым. Агенту эта информация недоступна."
+    : "Агент получает только эти документы и должен сам найти ошибки. Переключитесь на «Ответы», чтобы проверить себя.";
+}
+
+function renderAnswers() {
+  const box = $("#answers");
+  if (!state.answers) { box.innerHTML = ""; return; }
+  const ix = state.ix;
+  const pv = state.data.provenance;
+  let body;
+  if (!ix.issues.length) {
+    body = `<div class="clean-box"><b>Ошибок нет</b>Правильный ответ агента здесь пустой список. Любое обвинение снизит награду.</div>`;
+  } else {
+    const seen = new Set();
+    body = `<div class="issues">${ix.issues.map((is, i) => {
+      let label = "";
+      if (is.group && !seen.has(is.group)) {
+        seen.add(is.group);
+        label = `<div class="group-label"><b>${esc(GROUP_RU[is.group[0]] || is.group)}</b></div>`;
+      }
+      const diff = is.affected_ids.map((a) => pv?.ledger_diff?.[a]).find(Boolean);
+      return `${label}<article class="issue t-${esc(is.type)}">
+        <div class="issue-top"><span class="issue-n">${i + 1}</span><span class="issue-type">${esc(TYPE_RU[is.type] || is.type)}</span><span class="issue-amount">${money(is.expected_amount_minor, is.currency)}</span></div>
+        <p class="issue-text">${esc(issueText(is))}</p>
+        <div class="issue-meta">
+          <div>Где</div><div>${is.affected_ids.map(refHuman).join(", ")}</div>
+          <div>Доказательства</div><div>${is.evidence_sets.map((s) => s.map(refHuman).join(", ")).join("<br>или ")}</div>
+        </div>
+        <div class="issue-actions">
+          <button class="btn small" data-open="${esc(is.affected_ids[0])}">Открыть документ</button>
+          ${diff ? `<details><summary class="link-btn">Проводка до и после</summary>${diffBlock(diff)}</details>` : ""}
+        </div>
+      </article>`;
+    }).join("")}</div>`;
+  }
+  const traps = (pv?.distractors || []).filter((d) => d.ids.length);
+  const trapsHtml = traps.length
+    ? `<div class="traps"><h3>Похоже на ошибку, но нет</h3><p>Эти случаи учтены правильно. Агент не должен их отмечать.</p>
+        <div class="trap-list">${traps.map((d) => `<div class="trap"><b>${esc(DISTRACTOR_RU[d.kind] || d.kind)}</b><span>${d.ids.map(refHuman).join(", ")}</span></div>`).join("")}</div></div>`
+    : "";
+  box.innerHTML = `<div class="answers-wrap"><h2 class="section-h">${ix.issues.length ? `Ошибки в этой компании: ${ix.issues.length}` : "Ошибки в этой компании"}</h2>${body}${trapsHtml}</div>`;
+}
+
+function diffBlock(d) {
+  const base = state.ix.m.base_currency;
+  const amt = (v) => (v ? moneyText(v, base) : "—").padStart(20);
+  const fmt = (rows) => (rows ? rows.map((r) => `${accName(r.account).padEnd(30)} Дт ${amt(r.debit_minor)}   Кт ${amt(r.credit_minor)}`).join("\n") : "проводки не было");
+  return `<div class="diff"><div><h4>До</h4><pre>${esc(fmt(d.before))}</pre></div><div><h4>После</h4><pre class="after">${esc(fmt(d.after))}</pre></div></div>`;
+}
+
 function renderTabs() {
-  const list = tabs();
-  if (!list.some(([k]) => k === state.tab)) state.tab = "overview";
-  $("#tabs").innerHTML = list
-    .map(([k, label, n, cls]) => `<button class="tab ${cls || ""}${k === state.tab ? " active" : ""}" data-tab="${k}" role="tab">${label}${n != null ? `<span class="count">${n}</span>` : ""}</button>`)
-    .join("");
+  const p = state.data.public;
+  const counts = { invoices: p.invoices.length, payments: p.payments.length, ledger: p.ledger.length, fx: p.fx.length };
+  $("#tabs").innerHTML = TABS.map(([k, label]) => `<button class="tab${k === state.tab ? " active" : ""}" data-tab="${k}" role="tab">${label}<span class="count">${counts[k]}</span></button>`).join("");
 }
 
 function renderView() {
-  const fn = { overview: viewOverview, ledger: viewLedger, invoices: viewInvoices, payments: viewPayments, fx: viewFx, issues: viewIssues, provenance: viewProvenance }[state.tab];
-  $("#view").innerHTML = fn();
-}
-
-function renderAll() {
-  renderSidebar();
-  if (!state.ix) return;
-  renderHeader();
-  renderTabs();
-  renderView();
-}
-
-/* ------------------------------------------------------------------ overview */
-function introBlock() {
-  if (state.introHidden) {
-    return `<div style="margin-bottom:12px"><button class="link-btn" data-action="intro-show">Как пользоваться</button></div>`;
-  }
-  return `<section class="intro">
-    <h2>Как пользоваться</h2>
-    <p>Здесь вымышленная компания за один месяц: счета, платежи, курсы валют и журнал проводок. В данные внесены ошибки. Агент должен найти их и сослаться на записи, которые это подтверждают.</p>
-    <div class="steps">
-      <div class="step"><span class="n">1</span><div><b>Документы</b><span class="muted">Таблицы на вкладках выше.</span></div></div>
-      <div class="step"><span class="n">2</span><div><b>Подробности</b><span class="muted">Клик по строке открывает карточку со связанными записями.</span></div></div>
-      <div class="step"><span class="n">3</span><div><b>Ответы</b><span class="muted">Переключатель справа вверху выделяет ошибки и доказательства.</span></div></div>
-      <div class="step"><span class="n">4</span><div><b>Другая компания</b><span class="muted">Слева выберите набор ошибок и вариант.</span></div></div>
-    </div>
-    <h2 style="margin-top:18px">Виды ошибок</h2>
-    <div class="types">${Object.keys(TYPE_RU).map((t) => `<div class="type-card"><b>${esc(TYPE_RU[t])}</b>${esc(TYPE_HINT[t])}</div>`).join("")}</div>
-    <div class="intro-foot"><span class="muted">Частичные оплаты, возвраты, одинаковые суммы и время в UTC около полуночи ошибками не считаются.</span><button class="btn ghost" data-action="intro-hide">Скрыть</button></div>
-  </section>`;
-}
-
-function viewOverview() {
-  const p = state.data.public;
-  const ix = state.ix;
-  const base = ix.m.base_currency;
-
-  const acc = new Map();
-  for (const r of p.ledger) {
-    const a = acc.get(r.account) || { d: 0, c: 0, n: 0 };
-    a.d += r.debit_minor; a.c += r.credit_minor; a.n += 1;
-    acc.set(r.account, a);
-  }
-  const accRows = [...acc.entries()].sort((a, b) => b[1].d + b[1].c - (a[1].d + a[1].c));
-  const totD = accRows.reduce((s, [, a]) => s + a.d, 0);
-  const totC = accRows.reduce((s, [, a]) => s + a.c, 0);
-
-  const byCcy = new Map();
-  for (const i of p.invoices) {
-    const x = byCcy.get(i.currency) || { n: 0, sum: 0, booked: 0 };
-    x.n += 1; x.sum += i.total_minor; x.booked += ix.rowsByInv.has(i.invoice_id) ? 1 : 0;
-    byCcy.set(i.currency, x);
-  }
-
-  let reviewerCard = "";
-  if (state.reviewer && state.data.provenance) {
-    const pv = state.data.provenance;
-    const counts = {};
-    for (const d of pv.distractors) counts[d.kind] = (counts[d.kind] || 0) + 1;
-    const pre = pv.pre_injection;
-    reviewerCard = `<div class="card"><div class="card-head"><div class="card-title">Что внесено</div><span class="chip bad">эталон</span></div>
-      <div class="card-body">
-        <div class="kv">
-          <div>Ошибки</div><div>${Object.entries(pv.sampled.error_counts).map(([t, n]) => `${esc(TYPE_RU[t])}: <b>${n}</b>`).join("<br>")}</div>
-          <div>Сценарии</div><div>A: <b>${pv.sampled.interactions.A}</b>, B: <b>${pv.sampled.interactions.B}</b></div>
-          <div>Ловушки</div><div>${Object.entries(counts).map(([k, n]) => `${esc(DISTRACTOR_RU[k] || k)}: <b>${n}</b>`).join("<br>") || "—"}</div>
-          <div>До внесения ошибок</div><div>${pre.ledger_rows} строк, баланс ${pre.total_debit_minor === pre.total_credit_minor ? "сходился" : "не сходился"}</div>
-        </div>
-      </div></div>`;
-  }
-
-  return `${introBlock()}<div class="grid-2">
-    <div class="card"><div class="card-head"><div class="card-title">Проводки по дням</div><span class="muted">время компании</span></div>
-      <div class="card-body">${dailyChart()}</div></div>
-    <div class="card"><div class="card-head"><div class="card-title">Обороты по счетам</div>
-      <span class="chip ${totD === totC ? "good" : "bad"}">${totD === totC ? "баланс сходится" : "баланс не сходится"}</span></div>
-      <div class="table-wrap" style="max-height:360px"><table class="compact"><thead><tr><th>Счёт учёта</th><th class="num">Строк</th><th class="num">Дебет, ${esc(base)}</th><th class="num">Кредит, ${esc(base)}</th></tr></thead><tbody>
-      ${accRows.map(([a, x]) => `<tr data-filter-account="${esc(a)}" title="Открыть в журнале"><td>${accCell(a)}</td><td class="num">${x.n}</td><td class="num">${money(x.d, base)}</td><td class="num">${money(x.c, base)}</td></tr>`).join("")}
-      <tr><td><b>Итого</b></td><td></td><td class="num"><b>${money(totD, base)}</b></td><td class="num"><b>${money(totC, base)}</b></td></tr>
-      </tbody></table></div></div>
-    <div class="card"><div class="card-head"><div class="card-title">Счета по валютам</div></div>
-      <table><thead><tr><th>Валюта</th><th class="num">Счетов</th><th class="num">В учёте</th><th class="num">Сумма</th></tr></thead><tbody>
-      ${[...byCcy.entries()].map(([c, x]) => `<tr data-filter-ccy="${esc(c)}" title="Открыть счета"><td><b>${esc(CCY_RU[c] || c)}</b> <span class="faint">${esc(c)}</span>${c === base ? ' <span class="chip">валюта учёта</span>' : ""}</td><td class="num">${x.n}</td><td class="num">${x.booked}</td><td class="num">${money(x.sum, c)}</td></tr>`).join("")}
-      </tbody></table></div>
-    <div class="card"><div class="card-head"><div class="card-title">Учётная политика</div><span class="muted">доступна агенту</span></div>
-      <div class="card-body"><div class="kv">
-        <div>Период</div><div>с ${esc(ruDateTime(ix.m.period_start))} до ${esc(ruDateTime(ix.m.period_end))}, конец не включается, ${esc(tzRu(ix.m.timezone))}</div>
-        <div>Дата документа</div><div>по часовому поясу компании, даже если время записано в UTC</div>
-        <div>Курс</div><div>на дату документа, в выходные последний опубликованный</div>
-        <div>Оплата валютного счёта</div><div>долг списывается по курсу счёта, разница идёт в курсовые разницы</div>
-        <div>Округление</div><div>${esc(roundingRu(ix.m.rounding.mode))}, до минимальной единицы валюты</div>
-      </div></div></div>
-    ${reviewerCard}
-  </div>`;
-}
-
-function dailyChart() {
-  const ix = state.ix;
-  const days = Math.round((ix.end - ix.start) / 864e5);
-  const counts = new Array(days).fill(0);
-  for (const r of state.data.public.ledger) {
-    const i = Math.floor((Date.parse(r.timestamp) - ix.start) / 864e5);
-    if (i >= 0 && i < days) counts[i] += 1;
-  }
-  const W = 640, H = 170, L = 30, B = 24, T = 8;
-  const max = Math.max(1, ...counts);
-  const bw = (W - L - 8) / days;
-  const bars = counts.map((n, i) => {
-    const h = ((H - B - T) * n) / max;
-    const d = new Date(ix.start + i * 864e5 + ix.tzMin * 60000);
-    const wd = d.getUTCDay();
-    return `<rect class="bar${wd === 0 || wd === 6 ? " out" : ""}" x="${L + i * bw + 1}" y="${H - B - h}" width="${Math.max(1, bw - 2)}" height="${h}" rx="2"><title>${isoDateRu(d.toISOString())}: ${n} ${plural(n, "строка", "строки", "строк")}</title></rect>`;
-  }).join("");
-  const ticks = [0, Math.floor(days / 2), days - 1].map((i) => {
-    const d = new Date(ix.start + i * 864e5 + ix.tzMin * 60000).toISOString();
-    return `<text x="${L + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle">${d.slice(8, 10)}.${d.slice(5, 7)}</text>`;
-  }).join("");
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Число проводок по дням">
-    <line class="grid" x1="${L}" x2="${W}" y1="${T}" y2="${T}"/><text x="${L - 6}" y="${T + 4}" text-anchor="end">${max}</text>
-    <line class="axis" x1="${L}" x2="${W}" y1="${H - B}" y2="${H - B}"/>${bars}${ticks}</svg>
-    <div class="legend" style="margin-top:6px"><span class="muted">Серым отмечены выходные.</span></div>`;
+  const help = TABS.find(([k]) => k === state.tab)[2];
+  const fn = { invoices: viewInvoices, payments: viewPayments, ledger: viewLedger, fx: viewFx }[state.tab];
+  $("#view").innerHTML = `<p class="tab-help">${esc(help)}</p>${fn()}`;
 }
 
 /* ------------------------------------------------------------------ tables */
@@ -513,28 +400,81 @@ function filterInput(key, placeholder) {
   return `<input class="search" data-f="${key}" placeholder="${esc(placeholder)}" value="${esc(state.f[key] || "")}">`;
 }
 function filterSelect(key, options, label) {
-  return `<select data-f="${key}" aria-label="${esc(label)}"><option value="">${esc(label)}: все</option>${options
+  return `<select data-f="${key}" aria-label="${esc(label)}"><option value="">${esc(label)}</option>${options
     .map(([v, t]) => `<option value="${esc(v)}"${state.f[key] === v ? " selected" : ""}>${esc(t)}</option>`)
     .join("")}</select>`;
 }
-function legend() {
-  return state.reviewer ? '<div class="legend"><span class="l-aff">ошибка</span><span class="l-ev">доказательство</span></div>' : '<span class="muted" style="font-size:12.5px">Клик по строке открывает подробности</span>';
-}
+function hlOption(options) { return state.answers ? [...options, ["hl", "только с ошибками"]] : options; }
+function legend() { return state.answers ? '<div class="legend"><span class="l-aff">ошибка</span><span class="l-ev">доказательство</span></div>' : ""; }
 function paged(rows, renderRow, cols, empty) {
-  const size = 100;
+  const size = 50;
   const pages = Math.max(1, Math.ceil(rows.length / size));
   if (state.page >= pages) state.page = pages - 1;
   const slice = rows.slice(state.page * size, state.page * size + size);
   const body = slice.length ? slice.map(renderRow).join("") : `<tr><td colspan="${cols}"><div class="empty">${empty}</div></td></tr>`;
   const pager = pages > 1
     ? `<div class="pager"><span>${state.page * size + 1}–${Math.min(rows.length, (state.page + 1) * size)} из ${rows.length}</span>
-       <span><button class="btn" data-page="-1"${state.page === 0 ? " disabled" : ""}>Назад</button> <button class="btn" data-page="1"${state.page >= pages - 1 ? " disabled" : ""}>Далее</button></span></div>`
-    : `<div class="pager"><span>Всего ${rows.length}</span></div>`;
+       <span><button class="btn small" data-page="-1"${state.page === 0 ? " disabled" : ""}>Назад</button> <button class="btn small" data-page="1"${state.page >= pages - 1 ? " disabled" : ""}>Далее</button></span></div>`
+    : "";
   return { body, pager };
 }
 function matches(obj, q, extra = "") {
   if (!q) return true;
   return (JSON.stringify(obj) + " " + extra).toLowerCase().includes(q.toLowerCase());
+}
+function unapplied(x) { return x.amount_minor - x.invoice_refs.reduce((s, r) => s + r.applied_minor, 0); }
+
+function viewInvoices() {
+  const p = state.data.public;
+  const ix = state.ix;
+  const f = state.f;
+  let rows = p.invoices.filter((i) => matches(i, f.q));
+  if (f.ccy) rows = rows.filter((i) => i.currency === f.ccy);
+  if (f.st === "paid") rows = rows.filter((i) => i.total_minor - (ix.applied.get(i.invoice_id) || 0) === 0);
+  if (f.st === "open") rows = rows.filter((i) => i.total_minor - (ix.applied.get(i.invoice_id) || 0) > 0);
+  if (f.st === "other") rows = rows.filter((i) => !ix.rowsByInv.has(i.invoice_id));
+  if (f.st === "hl") rows = rows.filter((i) => hlClass(`invoices:${i.invoice_id}`));
+  rows = [...rows].sort((a, b) => (inPeriod(a.issued_at) ? 0 : 1) - (inPeriod(b.issued_at) ? 0 : 1) || Date.parse(a.issued_at) - Date.parse(b.issued_at));
+  const { body, pager } = paged(rows, (i) => {
+    const paid = ix.applied.get(i.invoice_id) || 0;
+    const open = i.total_minor - paid;
+    const status = open === 0 ? '<span class="chip good">оплачен</span>'
+      : paid ? `<span class="chip warn">оплачен частично</span><span class="cell-sub">осталось ${money(open, i.currency)}</span>`
+      : '<span class="chip">не оплачен</span>';
+    const other = ix.rowsByInv.has(i.invoice_id) ? "" : '<span class="cell-sub">другой месяц, не проведён</span>';
+    const item = i.line_items[0].description.split(" · ")[0];
+    return `<tr class="${hlClass(`invoices:${i.invoice_id}`)}" data-ref="invoices:${esc(i.invoice_id)}">
+      <td class="mono">${esc(i.invoice_id)}</td><td>${tsCell(i.issued_at)}</td>
+      <td>${esc(item)}${i.line_items.length > 1 ? ` <span class="faint">и ещё ${i.line_items.length - 1}</span>` : ""}<span class="cell-sub">покупатель ${esc(i.entity_id)}</span></td>
+      <td class="num">${money(i.total_minor, i.currency)}</td><td>${status}${other}</td></tr>`;
+  }, 5, "Ничего не найдено");
+  const ccys = Object.keys(ix.m.currencies).map((c) => [c, `${CCY_RU[c] || c} (${c})`]);
+  return `<div class="card"><div class="toolbar">${filterInput("q", "Номер, покупатель, товар")}${filterSelect("ccy", ccys, "Все валюты")}${filterSelect("st", hlOption([["paid", "оплачен"], ["open", "есть долг"], ["other", "другой месяц"]]), "Все счета")}${legend()}</div>
+    <div class="table-wrap"><table><thead><tr><th>Номер</th><th>Дата</th><th>Что продано</th><th class="num">Сумма</th><th>Статус</th></tr></thead><tbody>${body}</tbody></table></div>${pager}</div>`;
+}
+
+function viewPayments() {
+  const p = state.data.public;
+  const ix = state.ix;
+  const f = state.f;
+  let rows = p.payments.filter((x) => matches(x, f.q));
+  if (f.st === "receipt" || f.st === "refund") rows = rows.filter((x) => x.kind === f.st);
+  if (f.st === "rest") rows = rows.filter((x) => x.kind === "receipt" && unapplied(x) > 0);
+  if (f.st === "hl") rows = rows.filter((x) => hlClass(`payments:${x.payment_id}`));
+  rows = [...rows].sort((a, b) => (inPeriod(a.timestamp) ? 0 : 1) - (inPeriod(b.timestamp) ? 0 : 1) || Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  const { body, pager } = paged(rows, (x) => {
+    const ua = x.kind === "receipt" ? unapplied(x) : 0;
+    const target = x.kind === "refund"
+      ? `возврат по ${refLink(`payments:${x.refund_of}`)}`
+      : x.invoice_refs.map((r) => refLink(`invoices:${r.invoice_id}`)).join(", ") || '<span class="chip warn">никуда</span>';
+    const other = ix.rowsByPay.has(x.payment_id) ? "" : '<span class="cell-sub">другой месяц, не проведён</span>';
+    return `<tr class="${hlClass(`payments:${x.payment_id}`)}" data-ref="payments:${esc(x.payment_id)}">
+      <td class="mono">${esc(x.payment_id)}</td><td>${tsCell(x.timestamp)}${other}</td>
+      <td>${x.kind === "refund" ? '<span class="chip warn">возврат</span>' : "поступление"}<span class="cell-sub">покупатель ${esc(x.entity_id)}</span></td>
+      <td class="num">${money(x.amount_minor, x.currency)}</td><td>${target}${ua ? `<span class="cell-sub">не зачтено ${money(ua, x.currency)}</span>` : ""}</td></tr>`;
+  }, 5, "Ничего не найдено");
+  return `<div class="card"><div class="toolbar">${filterInput("q", "Номер, покупатель, счёт")}${filterSelect("st", hlOption([["receipt", "поступления"], ["refund", "возвраты"], ["rest", "есть незачтённый остаток"]]), "Все платежи")}${legend()}</div>
+    <div class="table-wrap"><table><thead><tr><th>Номер</th><th>Дата</th><th>Тип</th><th class="num">Сумма</th><th>Зачтён в</th></tr></thead><tbody>${body}</tbody></table></div>${pager}</div>`;
 }
 
 function viewLedger() {
@@ -544,74 +484,16 @@ function viewLedger() {
   const f = state.f;
   let rows = p.ledger.filter((r) => matches(r, f.q, accName(r.account)));
   if (f.account) rows = rows.filter((r) => r.account === f.account);
-  if (f.kind === "doc") rows = rows.filter((r) => r.invoice_id || r.payment_id);
-  if (f.kind === "bg") rows = rows.filter((r) => !r.invoice_id && !r.payment_id);
-  if (f.kind === "hl" && state.reviewer) rows = rows.filter((r) => hlClass(`ledger:${r.row_id}`));
-  const kinds = [["doc", "по документам"], ["bg", "прочие операции"]];
-  if (state.reviewer) kinds.push(["hl", "только выделенные"]);
+  if (f.st === "doc") rows = rows.filter((r) => r.invoice_id || r.payment_id);
+  if (f.st === "bg") rows = rows.filter((r) => !r.invoice_id && !r.payment_id);
+  if (f.st === "hl") rows = rows.filter((r) => hlClass(`ledger:${r.row_id}`));
   const { body, pager } = paged(rows, (r) => `<tr class="${hlClass(`ledger:${r.row_id}`)}" data-ref="ledger:${esc(r.row_id)}">
       <td>${tsCell(r.timestamp)}</td><td>${accCell(r.account)}</td>
       <td class="num">${r.debit_minor ? money(r.debit_minor, base) : ""}</td><td class="num">${r.credit_minor ? money(r.credit_minor, base) : ""}</td>
-      <td>${r.invoice_id ? refLink(`invoices:${r.invoice_id}`) : r.payment_id ? refLink(`payments:${r.payment_id}`) : '<span class="faint">—</span>'}${r.invoice_id && r.payment_id ? `<span class="cell-sub">платёж ${refLink(`payments:${r.payment_id}`)}</span>` : ""}</td>
-      <td>${dash(r.entity_id)}</td><td class="mono faint">${esc(r.row_id)}</td></tr>`, 7, "Ничего не найдено");
-  return `<div class="card"><div class="card-head"><div class="toolbar">${filterInput("q", "Номер, счёт, сумма")}${filterSelect("account", accounts.map((a) => [a, accName(a)]), "Счёт учёта")}${filterSelect("kind", kinds, "Строки")}</div>${legend()}</div>
-    <div class="table-wrap"><table><thead><tr><th>Дата и время</th><th>Счёт учёта</th><th class="num">Дебет</th><th class="num">Кредит</th><th>Документ</th><th>Покупатель</th><th>№ строки</th></tr></thead><tbody>${body}</tbody></table></div>${pager}</div>`;
+      <td>${r.invoice_id ? refLink(`invoices:${r.invoice_id}`) : r.payment_id ? refLink(`payments:${r.payment_id}`) : '<span class="faint">—</span>'}${r.invoice_id && r.payment_id ? `<span class="cell-sub">платёж ${refLink(`payments:${r.payment_id}`)}</span>` : ""}</td></tr>`, 5, "Ничего не найдено");
+  return `<div class="card"><div class="toolbar">${filterInput("q", "Номер, счёт учёта, сумма")}${filterSelect("account", accounts.map((a) => [a, accName(a)]), "Все счета учёта")}${filterSelect("st", hlOption([["doc", "по счетам и платежам"], ["bg", "прочие операции"]]), "Все строки")}${legend()}</div>
+    <div class="table-wrap"><table><thead><tr><th>Дата</th><th>Счёт учёта</th><th class="num">Дебет</th><th class="num">Кредит</th><th>Документ</th></tr></thead><tbody>${body}</tbody></table></div>${pager}</div>`;
 }
-
-function viewInvoices() {
-  const p = state.data.public;
-  const ix = state.ix;
-  const f = state.f;
-  let rows = p.invoices.filter((i) => matches(i, f.q));
-  if (f.ccy) rows = rows.filter((i) => i.currency === f.ccy);
-  if (f.booked === "yes") rows = rows.filter((i) => ix.rowsByInv.has(i.invoice_id));
-  if (f.booked === "no") rows = rows.filter((i) => !ix.rowsByInv.has(i.invoice_id));
-  if (f.paid === "paid") rows = rows.filter((i) => i.total_minor - (ix.applied.get(i.invoice_id) || 0) === 0);
-  if (f.paid === "open") rows = rows.filter((i) => i.total_minor - (ix.applied.get(i.invoice_id) || 0) > 0);
-  rows = [...rows].sort((a, b) => Date.parse(a.issued_at) - Date.parse(b.issued_at));
-  const { body, pager } = paged(rows, (i) => {
-    const booked = ix.rowsByInv.has(i.invoice_id);
-    const paid = ix.applied.get(i.invoice_id) || 0;
-    const open = i.total_minor - paid;
-    const payState = open === 0 ? '<span class="chip good">оплачен</span>' : paid ? `<span class="chip warn">частично</span><span class="cell-sub">осталось ${money(open, i.currency)}</span>` : '<span class="chip">не оплачен</span>';
-    const firstItem = i.line_items[0].description.split(" · ")[0];
-    return `<tr class="${hlClass(`invoices:${i.invoice_id}`)}" data-ref="invoices:${esc(i.invoice_id)}">
-      <td class="mono">${esc(i.invoice_id)}</td><td>${tsCell(i.issued_at)}</td>
-      <td>${esc(firstItem)}${i.line_items.length > 1 ? ` <span class="faint">и ещё ${i.line_items.length - 1}</span>` : ""}<span class="cell-sub">покупатель ${esc(i.entity_id)}</span></td>
-      <td class="num">${money(i.total_minor, i.currency)}</td><td>${payState}</td>
-      <td>${booked ? '<span class="chip accent">учтён</span>' : inPeriod(i.issued_at) ? '<span class="chip">не учтён</span>' : '<span class="chip">другой месяц</span>'}</td></tr>`;
-  }, 6, "Нет счетов");
-  const ccys = Object.keys(ix.m.currencies).map((c) => [c, `${CCY_RU[c] || c} (${c})`]);
-  return `<div class="card"><div class="card-head"><div class="toolbar">${filterInput("q", "Номер, покупатель, товар")}${filterSelect("ccy", ccys, "Валюта")}${filterSelect("paid", [["paid", "оплачен"], ["open", "есть долг"]], "Оплата")}${filterSelect("booked", [["yes", "учтён в журнале"], ["no", "не учтён"]], "Учёт")}</div>${legend()}</div>
-    <div class="table-wrap"><table><thead><tr><th>Номер</th><th>Дата счёта</th><th>Что продано</th><th class="num">Сумма</th><th>Оплата</th><th>В журнале</th></tr></thead><tbody>${body}</tbody></table></div>${pager}</div>`;
-}
-
-function viewPayments() {
-  const p = state.data.public;
-  const ix = state.ix;
-  const f = state.f;
-  let rows = p.payments.filter((x) => matches(x, f.q));
-  if (f.kind) rows = rows.filter((x) => x.kind === f.kind);
-  if (f.alloc === "full") rows = rows.filter((x) => x.kind === "receipt" && unapplied(x) === 0);
-  if (f.alloc === "rest") rows = rows.filter((x) => x.kind === "receipt" && unapplied(x) > 0);
-  rows = [...rows].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
-  const { body, pager } = paged(rows, (x) => {
-    const ua = x.kind === "receipt" ? unapplied(x) : 0;
-    const refs = x.invoice_refs.map((r) => refLink(`invoices:${r.invoice_id}`)).join(", ");
-    const target = x.kind === "refund"
-      ? `возврат по ${refLink(`payments:${x.refund_of}`)}`
-      : refs || '<span class="chip warn">не зачтён</span>';
-    return `<tr class="${hlClass(`payments:${x.payment_id}`)}" data-ref="payments:${esc(x.payment_id)}">
-      <td class="mono">${esc(x.payment_id)}</td><td>${tsCell(x.timestamp)}</td>
-      <td>${x.kind === "refund" ? '<span class="chip warn">возврат</span>' : '<span class="chip">поступление</span>'}<span class="cell-sub">покупатель ${esc(x.entity_id)}</span></td>
-      <td class="num">${money(x.amount_minor, x.currency)}</td><td>${target}</td>
-      <td class="num">${ua ? money(ua, x.currency) : '<span class="faint">—</span>'}</td>
-      <td>${ix.rowsByPay.has(x.payment_id) ? '<span class="chip accent">учтён</span>' : '<span class="chip">другой месяц</span>'}</td></tr>`;
-  }, 7, "Нет платежей");
-  return `<div class="card"><div class="card-head"><div class="toolbar">${filterInput("q", "Номер, покупатель, счёт")}${filterSelect("kind", [["receipt", "поступления"], ["refund", "возвраты"]], "Тип")}${filterSelect("alloc", [["full", "зачтены полностью"], ["rest", "есть остаток"]], "Зачёт")}</div>${legend()}</div>
-    <div class="table-wrap"><table><thead><tr><th>Номер</th><th>Дата платежа</th><th>Тип</th><th class="num">Сумма</th><th>Зачтён в</th><th class="num">Не зачтено</th><th>В журнале</th></tr></thead><tbody>${body}</tbody></table></div>${pager}</div>`;
-}
-function unapplied(x) { return x.amount_minor - x.invoice_refs.reduce((s, r) => s + r.applied_minor, 0); }
 
 function viewFx() {
   const p = state.data.public;
@@ -619,19 +501,18 @@ function viewFx() {
   if (!p.fx.length) return '<div class="card"><div class="empty">У компании одна валюта, курсов нет.</div></div>';
   const by = new Map();
   for (const r of p.fx) push(by, r.source_currency, r);
-  const charts = [...by.entries()].map(([ccy, rows]) => `<div class="card"><div class="card-head"><div class="card-title">${esc(ccy)} → ${esc(ix.m.base_currency)}</div><span class="muted">фоном выделен период</span></div><div class="card-body">${fxChart(rows)}</div></div>`).join("");
-  const rows = p.fx.filter((r) => matches(r, state.f.q));
-  const { body, pager } = paged(rows, (r) => {
+  const charts = [...by.entries()].map(([ccy, rows]) => `<div class="card fx-card"><h3>${esc(ccy)} к ${esc(ix.m.base_currency)}</h3>${fxChart(rows)}</div>`).join("");
+  const { body, pager } = paged(p.fx.filter((r) => matches(r, state.f.q)), (r) => {
     const ref = `fx:${r.date}/${r.source_currency}/${r.target_currency}`;
-    return `<tr class="${hlClass(ref)}" data-ref="${esc(ref)}"><td class="mono">${esc(isoDateRu(r.date))}</td><td>1 ${esc(r.source_currency)} =</td><td class="num">${esc(r.rate)} ${esc(r.target_currency)}</td></tr>`;
-  }, 3, "Нет курсов");
-  return `<div class="grid-2" style="margin-bottom:16px">${charts}</div>
-    <div class="card"><div class="card-head"><div class="toolbar">${filterInput("q", "Дата или валюта")}</div>${legend()}</div>
+    return `<tr class="${hlClass(ref)}" data-ref="${esc(ref)}"><td class="mono">${esc(isoDateRu(r.date))}</td><td>1 ${esc(r.source_currency)}</td><td class="num">${esc(r.rate)} ${esc(r.target_currency)}</td></tr>`;
+  }, 3, "Ничего не найдено");
+  return `<div class="fx-charts">${charts}</div>
+    <div class="card"><div class="toolbar">${filterInput("q", "Дата (2026-03-14) или валюта")}${legend()}</div>
     <div class="table-wrap"><table><thead><tr><th>Дата</th><th>Валюта</th><th class="num">Курс</th></tr></thead><tbody>${body}</tbody></table></div>${pager}</div>`;
 }
 function fxChart(rows) {
   const ix = state.ix;
-  const W = 640, H = 190, L = 64, R = 10, T = 10, B = 24;
+  const W = 640, H = 170, L = 64, R = 10, T = 10, B = 24;
   const xs = rows.map((r) => Date.parse(r.date + "T12:00:00Z"));
   const ys = rows.map((r) => Number(r.rate));
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
@@ -642,76 +523,16 @@ function fxChart(rows) {
   const path = xs.map((t, i) => `${i ? "L" : "M"}${X(t).toFixed(1)} ${Y(ys[i]).toFixed(1)}`).join(" ");
   const ps = Math.max(L, X(ix.start)), pe = Math.min(W - R, X(ix.end));
   const fmtV = (v) => v.toLocaleString("ru-RU", { maximumSignificantDigits: 6 });
-  const dots = state.reviewer
-    ? rows.map((r, i) => (ix.evidence.has(`fx:${r.date}/${r.source_currency}/${r.target_currency}`) ? `<circle cx="${X(xs[i])}" cy="${Y(ys[i])}" r="4" fill="var(--warn)"><title>Доказательство, ${isoDateRu(r.date)}</title></circle>` : "")).join("")
+  const dots = state.answers
+    ? rows.map((r, i) => (ix.evidence.has(`fx:${r.date}/${r.source_currency}/${r.target_currency}`) ? `<circle cx="${X(xs[i])}" cy="${Y(ys[i])}" r="4.5" fill="var(--warn)"><title>Доказательство, ${isoDateRu(r.date)}</title></circle>` : "")).join("")
     : "";
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Динамика курса">
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Курс по дням">
     <rect x="${ps}" y="${T}" width="${Math.max(0, pe - ps)}" height="${H - T - B}" fill="var(--accent-soft)"/>
+    <text x="${(ps + pe) / 2}" y="${T + 14}" text-anchor="middle">отчётный месяц</text>
     <line class="grid" x1="${L}" x2="${W - R}" y1="${Y(y1)}" y2="${Y(y1)}"/><line class="grid" x1="${L}" x2="${W - R}" y1="${Y(y0)}" y2="${Y(y0)}"/>
     <text x="${L - 6}" y="${Y(y1) + 4}" text-anchor="end">${fmtV(y1)}</text><text x="${L - 6}" y="${Y(y0) + 4}" text-anchor="end">${fmtV(y0)}</text>
     <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>${dots}
     <text x="${L}" y="${H - 6}">${isoDateRu(rows[0].date)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${isoDateRu(rows[rows.length - 1].date)}</text></svg>`;
-}
-
-/* ------------------------------------------------------------------ reviewer views */
-function viewIssues() {
-  const ix = state.ix;
-  if (!ix.issues.length) {
-    return `<div class="card"><div class="empty"><b>Ошибок нет</b><br>Правильный ответ агента: пустой список. Любое обвинение снизит награду.</div></div>`;
-  }
-  const pv = state.data.provenance;
-  const groupsSeen = new Set();
-  return `<div class="issues">${ix.issues.map((is, n) => {
-    const changes = (pv?.changes || []).filter((c) => c.issue_ids.includes(is.issue_id));
-    const diffs = is.affected_ids.map((a) => pv?.ledger_diff?.[a] && diffBlock(pv.ledger_diff[a])).filter(Boolean).join("");
-    let groupHead = "";
-    if (is.group && !groupsSeen.has(is.group)) {
-      groupsSeen.add(is.group);
-      groupHead = `<div class="section-title" style="margin:8px 4px 0">${esc(GROUP_RU[is.group[0]] || is.group)}</div>`;
-    }
-    return `${groupHead}<article class="issue" id="${esc(is.issue_id)}">
-      <div class="issue-head"><span class="mono faint">Ошибка ${n + 1}</span>${typeChip(is.type)}${is.group ? `<span class="chip accent" title="${esc(GROUP_RU[is.group[0]] || "")}">сценарий ${esc(is.group)}</span>` : ""}
-        <span class="issue-amount">${money(is.expected_amount_minor, is.currency)}</span></div>
-      <p class="issue-desc">${esc(issueText(is))}</p>
-      <div class="kv">
-        <div>Где</div><div>${is.affected_ids.map(refHuman).join(", ")}</div>
-        <div>Доказательства</div><div>${is.evidence_sets.map((s) => `<span class="evidence-set">${s.map(refHuman).join(" · ")}</span>`).join(" или ")}</div>
-        ${changes.length ? `<div>Изменения</div><div>${changes.map(changeLine).join("<br>")}</div>` : ""}
-      </div>${diffs}</article>`;
-  }).join("")}</div>`;
-}
-function changeValue(v) {
-  if (v === null || v === undefined) return "—";
-  if (v === true) return "да";
-  if (v === false) return "нет";
-  if (Array.isArray(v)) return v.length ? v.map((r) => `${r.invoice_id}: ${r.applied_minor}`).join(", ") : "ни к одному счёту";
-  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return isoDateRu(v);
-  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v)) return ruDateTime(v);
-  return String(v).replace("added (copy of", "добавлен (копия").replace("added (customer paid duplicate", "добавлен (покупатель оплатил дубль");
-}
-function changeLine(c) {
-  return `${refHuman(c.target)}: ${esc(CHANGE_FIELD_RU[c.field] || c.field)} <span class="faint">${esc(changeValue(c.before))}</span> → <b>${esc(changeValue(c.after))}</b>${c.note ? ` <span class="chip">${esc(NOTE_RU[c.note] || c.note)}</span>` : ""}`;
-}
-function diffBlock(d) {
-  const base = state.ix.m.base_currency;
-  const amt = (v) => (v ? moneyText(v, base) : "—").padStart(20);
-  const fmt = (rows) => (rows ? rows.map((r) => `${accName(r.account).padEnd(30)} Дт ${amt(r.debit_minor)}   Кт ${amt(r.credit_minor)}`).join("\n") : "(проводки не было)");
-  return `<div class="diff"><div><h4>До</h4><pre class="before">${esc(fmt(d.before))}</pre></div><div><h4>После</h4><pre class="after">${esc(fmt(d.after))}</pre></div></div>`;
-}
-function viewProvenance() {
-  const pv = state.data.provenance;
-  if (!pv) return '<div class="card"><div class="empty">Нет данных</div></div>';
-  const dis = pv.distractors.map((d) => `<tr><td>${esc(DISTRACTOR_RU[d.kind] || d.kind)}</td><td>${d.ids.map(refHuman).join(", ")}</td></tr>`).join("");
-  return `<div class="grid-2">
-    <div class="card"><div class="card-head"><div class="card-title">Ловушки</div><span class="chip good">не ошибки</span></div>
-      <div class="card-body" style="padding-bottom:0"><p class="muted" style="margin:0 0 10px">Записи выглядят подозрительно, но учтены верно.</p></div>
-      <div class="table-wrap" style="max-height:480px"><table><thead><tr><th>Вид</th><th>Записи</th></tr></thead><tbody>${dis || '<tr><td colspan="2"><div class="empty">—</div></td></tr>'}</tbody></table></div></div>
-    <div class="card"><div class="card-head"><div class="card-title">Изменения генератора</div></div>
-      <div class="card-body">${pv.changes.length ? pv.changes.map((c) => `<div style="margin-bottom:8px">${changeLine(c)}</div>`).join("") : '<span class="muted">Изменений нет.</span>'}</div></div>
-    <div class="card"><div class="card-head"><div class="card-title">Параметры</div></div>
-      <div class="card-body"><div class="kv" style="margin-bottom:10px"><div>ID эпизода</div><div class="mono">${esc(state.ix.m.episode_id)}</div><div>Версия генератора</div><div class="mono">${esc(pv.generator_version)} · конфиг ${esc(pv.config_version)}</div></div>
-      <pre class="mono" style="margin:0;white-space:pre-wrap;max-height:360px;overflow:auto">${esc(JSON.stringify({ seed: pv.seed, config: pv.config, company: pv.company }, null, 2))}</pre></div></div>
-  </div>`;
 }
 
 /* ------------------------------------------------------------------ drawer */
@@ -719,13 +540,13 @@ function openRecord(ref) {
   const ix = state.ix;
   const [table, ...rest] = ref.split(":");
   const id = rest.join(":");
-  let html = "";
+  let html;
   if (table === "invoices" && ix.inv.has(id)) html = drawerInvoice(ix.inv.get(id));
   else if (table === "payments" && ix.pay.has(id)) html = drawerPayment(ix.pay.get(id));
   else if (table === "ledger" && ix.row.has(id)) html = drawerRow(ix.row.get(id));
   else if (table === "fx" && ix.fx.has(id)) html = drawerFx(ix.fx.get(id));
-  else html = `<div class="empty">Запись не найдена</div>`;
-  const title = table === "fx" ? `${id.split("/").slice(1).join(" → ")} · ${isoDateRu(id.slice(0, 10))}` : id;
+  else html = '<div class="empty">Запись не найдена</div>';
+  const title = table === "fx" ? `${id.split("/").slice(1).join("/")} на ${isoDateRu(id.slice(0, 10))}` : id;
   $("#drawer-title").innerHTML = `<div class="kind">${esc(TABLE_RU[table] || table)}</div><div class="rid">${esc(title)}</div>`;
   $("#drawer-body").innerHTML = issuesFor(ref) + html;
   $("#drawer").classList.add("open");
@@ -733,18 +554,18 @@ function openRecord(ref) {
   $("#scrim").classList.add("open");
   $("#drawer-body").scrollTop = 0;
 }
-function closeDrawer() {
+function closeOverlays() {
   $("#drawer").classList.remove("open");
   $("#drawer").setAttribute("aria-hidden", "true");
   $("#scrim").classList.remove("open");
+  $("#help").hidden = true;
 }
 function issuesFor(ref) {
-  if (!state.reviewer) return "";
+  if (!state.answers) return "";
   const aff = state.ix.affected.get(ref) || [];
   const ev = (state.ix.evidence.get(ref) || []).filter((i) => !aff.includes(i));
-  if (!aff.length && !ev.length) return "";
-  const line = (i, role) => `<div style="margin-bottom:6px">${typeChip(i.type)} <b>${role}</b><br><span class="muted">${esc(issueText(i))}</span></div>`;
-  return `<div class="callout">${aff.map((i) => line(i, "Ошибка")).join("")}${ev.map((i) => line(i, "Доказательство")).join("")}</div>`;
+  const box = (i, cls, role) => `<div class="callout ${cls}"><b>${role}: ${esc(TYPE_RU[i.type])}</b><br>${esc(issueText(i))}</div>`;
+  return aff.map((i) => box(i, "", "Ошибка")).join("") + ev.map((i) => box(i, "ev", "Доказательство")).join("");
 }
 function kv(pairs) { return `<div class="kv">${pairs.map(([k, v]) => `<div>${esc(k)}</div><div>${v}</div>`).join("")}</div>`; }
 function ledgerTable(rows) {
@@ -759,51 +580,47 @@ function drawerInvoice(i) {
   const ix = state.ix;
   const pays = ix.paysByInv.get(i.invoice_id) || [];
   const open = i.total_minor - (ix.applied.get(i.invoice_id) || 0);
-  const rows = ix.rowsByInv.get(i.invoice_id);
   return `<section>${kv([
     ["Покупатель", `<span class="mono">${esc(i.entity_id)}</span>`],
     ["Дата", tsCell(i.issued_at) + periodNote(i.issued_at)],
     ["Срок оплаты", tsCell(i.due_at)],
     ["Сумма", money(i.total_minor, i.currency)],
-    ["Остаток", open ? money(open, i.currency) : '<span class="chip good">оплачен</span>'],
-    ["Документ", `<span class="mono faint">${esc(i.doc_id)}</span>`],
+    ["Остаток долга", open ? money(open, i.currency) : '<span class="chip good">оплачен</span>'],
   ])}</section>
   <section><h3>Позиции</h3><table><thead><tr><th>Позиция</th><th class="num">Кол-во</th><th class="num">Цена</th><th class="num">Сумма</th></tr></thead><tbody>${i.line_items
     .map((li) => `<tr><td>${esc(li.description)}</td><td class="num">${li.quantity}</td><td class="num">${money(li.unit_price_minor, i.currency)}</td><td class="num">${money(li.amount_minor, i.currency)}</td></tr>`)
     .join("")}</tbody></table></section>
   <section><h3>Оплаты</h3>${pays.length ? `<table><tbody>${pays.map(({ pay, applied }) => `<tr data-ref="payments:${esc(pay.payment_id)}"><td>${refLink(`payments:${pay.payment_id}`)}</td><td>${tsCell(pay.timestamp)}</td><td class="num">${money(applied, i.currency)}</td></tr>`).join("")}</tbody></table>` : '<p class="muted">Оплат нет.</p>'}</section>
-  <section><h3>Проводка</h3>${ledgerTable(rows)}</section>`;
+  <section><h3>Проводка</h3>${ledgerTable(ix.rowsByInv.get(i.invoice_id))}</section>`;
 }
 function drawerPayment(x) {
   const ix = state.ix;
   const ua = x.kind === "receipt" ? unapplied(x) : 0;
   return `<section>${kv([
-    ["Тип", x.kind === "refund" ? "возврат" : "поступление"],
+    ["Тип", x.kind === "refund" ? "возврат покупателю" : "поступление от покупателя"],
     ["Покупатель", `<span class="mono">${esc(x.entity_id)}</span>`],
     ["Дата", tsCell(x.timestamp) + periodNote(x.timestamp)],
     ["Сумма", money(x.amount_minor, x.currency)],
-    ["Не зачтено", ua ? `<span class="chip warn">${money(ua, x.currency)}</span>` : "—"],
-    ["Возврат по", x.refund_of ? refLink(`payments:${x.refund_of}`) : "—"],
-    ["Документ", `<span class="mono faint">${esc(x.doc_id)}</span>`],
+    ...(ua ? [["Не зачтено", `<span class="chip warn">${money(ua, x.currency)}</span>`]] : []),
+    ...(x.refund_of ? [["Возврат по", refLink(`payments:${x.refund_of}`)]] : []),
   ])}</section>
   <section><h3>Зачтено в счета</h3>${x.invoice_refs.length ? `<table><tbody>${x.invoice_refs.map((r) => {
     const inv = ix.inv.get(r.invoice_id);
     return `<tr data-ref="invoices:${esc(r.invoice_id)}"><td>${refLink(`invoices:${r.invoice_id}`)}</td><td class="num">${money(r.applied_minor, x.currency)}</td><td class="num faint">из ${inv ? money(inv.total_minor, inv.currency) : "?"}</td></tr>`;
-  }).join("")}</tbody></table>` : '<p class="muted">Не зачтён ни в один счёт.</p>'}</section>
+  }).join("")}</tbody></table>` : '<p class="muted">Ни в один счёт.</p>'}</section>
   <section><h3>Проводка</h3>${ledgerTable(ix.rowsByPay.get(x.payment_id))}</section>`;
 }
 function drawerRow(r) {
   const ix = state.ix;
   const base = ix.m.base_currency;
-  let siblings = [];
+  let siblings;
   if (r.payment_id) siblings = ix.rowsByPay.get(r.payment_id);
   else if (r.invoice_id) siblings = ix.rowsByInv.get(r.invoice_id);
   else siblings = state.data.public.ledger.filter((x) => x.timestamp === r.timestamp && !x.invoice_id && !x.payment_id);
   return `<section>${kv([
     ["Дата", tsCell(r.timestamp)],
     ["Счёт учёта", accCell(r.account)],
-    ["Дебет", r.debit_minor ? money(r.debit_minor, base) : "—"],
-    ["Кредит", r.credit_minor ? money(r.credit_minor, base) : "—"],
+    [r.debit_minor ? "Дебет" : "Кредит", money(r.debit_minor || r.credit_minor, base)],
     ["Покупатель", dash(r.entity_id)],
     ["Счёт", dash(r.invoice_id, r.invoice_id && `invoices:${r.invoice_id}`)],
     ["Платёж", dash(r.payment_id, r.payment_id && `payments:${r.payment_id}`)],
@@ -818,7 +635,19 @@ function drawerFx(r) {
   <section><h3>Соседние дни</h3><table><tbody>${near.map((x) => {
     const ref = `fx:${x.date}/${x.source_currency}/${x.target_currency}`;
     return `<tr class="${x === r ? "hl-evidence" : hlClass(ref)}" data-ref="${esc(ref)}"><td class="mono">${esc(isoDateRu(x.date))}</td><td class="num">${esc(x.rate)}</td></tr>`;
-  }).join("")}</tbody></table><p class="faint">В выходные курс не публикуется.</p></section>`;
+  }).join("")}</tbody></table></section>`;
+}
+
+function renderHelp() {
+  $("#help-body").innerHTML = `
+    <p class="muted">Каждая компания вымышлена и описана за один месяц: счета покупателям, платежи, курсы валют и журнал проводок. Генератор вносит в данные ошибки и сохраняет правильные ответы отдельно. ИИ-агент видит только документы, ищет ошибки и подкрепляет каждую ссылками на записи. Затем его ответ сравнивают с эталоном.</p>
+    <ol class="help-steps">
+      <li>Выберите компанию слева или создайте новую.</li>
+      <li>В режиме «Данные» посмотрите документы так, как их видит агент. Клик по строке открывает подробности.</li>
+      <li>Переключитесь на «Ответы»: появится список ошибок, а в таблицах они будут выделены.</li>
+    </ol>
+    <div class="help-types">${Object.keys(TYPE_RU).map((t) => `<div class="help-type t-${t}"><b>${esc(TYPE_RU[t])}</b>${esc(TYPE_HINT[t])}</div>`).join("")}</div>
+    <p class="muted" style="margin-bottom:0">Частичные оплаты, возвраты, одинаковые суммы и время в UTC около полуночи ошибками не считаются.</p>`;
 }
 
 /* ------------------------------------------------------------------ events */
@@ -830,26 +659,25 @@ function setTab(tab) {
   renderTabs();
   renderView();
 }
+function setAnswers(on) {
+  state.answers = on;
+  store.set("auditgym.answers", on);
+  closeOverlays();
+  renderAll();
+}
 
 document.addEventListener("click", (ev) => {
   const t = ev.target;
   const link = t.closest(".idlink");
   if (link) { ev.stopPropagation(); openRecord(link.dataset.ref); return; }
-  const action = t.closest("[data-action]");
-  if (action) {
-    state.introHidden = action.dataset.action === "intro-hide";
-    store.set("auditgym.introHidden", state.introHidden);
-    renderView();
-    return;
-  }
+  const opener = t.closest("[data-open]");
+  if (opener) { openRecord(opener.dataset.open); return; }
+  const mode = t.closest("[data-mode]");
+  if (mode) { setAnswers(mode.dataset.mode === "answers"); return; }
   const tab = t.closest("[data-tab]");
   if (tab) { setTab(tab.dataset.tab); return; }
   const pageBtn = t.closest("[data-page]");
   if (pageBtn) { state.page += Number(pageBtn.dataset.page); renderView(); return; }
-  const acc = t.closest("[data-filter-account]");
-  if (acc) { setTab("ledger"); state.f.account = acc.dataset.filterAccount; renderView(); return; }
-  const ccy = t.closest("[data-filter-ccy]");
-  if (ccy) { setTab("invoices"); state.f.ccy = ccy.dataset.filterCcy; renderView(); return; }
   const row = t.closest("tr[data-ref]");
   if (row) { openRecord(row.dataset.ref); return; }
   if (t.closest(".ep") && window.innerWidth <= 900) $("#sidebar").classList.remove("open");
@@ -870,18 +698,21 @@ document.addEventListener("input", (ev) => {
   }, el.tagName === "SELECT" ? 0 : 180);
 });
 
-$("#reviewer").addEventListener("change", (ev) => {
-  state.reviewer = ev.target.checked;
-  store.set("auditgym.reviewer", state.reviewer);
-  closeDrawer();
-  renderAll();
-});
-$("#drawer-close").addEventListener("click", closeDrawer);
-$("#scrim").addEventListener("click", closeDrawer);
-document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeDrawer(); });
+$("#drawer-close").addEventListener("click", closeOverlays);
+$("#scrim").addEventListener("click", closeOverlays);
+$("#help").addEventListener("click", (ev) => { if (ev.target.id === "help") closeOverlays(); });
+$("#help-close").addEventListener("click", closeOverlays);
+$("#help-btn").addEventListener("click", () => { renderHelp(); $("#help").hidden = false; });
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeOverlays(); });
 $("#menu-btn").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+$("#gen-toggle").addEventListener("click", () => {
+  const form = $("#gen-form");
+  form.hidden = !form.hidden;
+  $("#gen-toggle").setAttribute("aria-expanded", String(!form.hidden));
+});
 $("#gen-dice").addEventListener("click", () => { $("#gen-seed").value = Math.floor(Math.random() * 1e6); });
-$("#gen-go").addEventListener("click", () => {
+$("#gen-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
   const seed = Number($("#gen-seed").value);
   if (!Number.isInteger(seed) || seed < 0 || seed > 1e9) { $("#gen-seed").focus(); return; }
   location.hash = srcHash({ kind: "gen", preset: $("#gen-preset").value, seed });
@@ -896,20 +727,16 @@ window.addEventListener("hashchange", route);
 
 /* ------------------------------------------------------------------ boot */
 (async function boot() {
-  const theme = store.get("auditgym.theme", window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.theme = store.get("auditgym.theme", "light");
   const review = new URLSearchParams(location.search).get("review");
-  if (review === "1" || review === "0") state.reviewer = review === "1";
-  $("#reviewer").checked = state.reviewer;
+  if (review === "1" || review === "0") state.answers = review === "1";
   try {
     const [pr, eps] = await Promise.all([api("/api/presets"), api("/api/episodes")]);
-    state.presets = pr.presets;
     state.episodes = eps.episodes;
     $("#gen-preset").innerHTML = pr.presets.map((p) => `<option value="${esc(p)}"${p === "interactions" ? " selected" : ""}>${esc(PRESET_RU[p] || p)}</option>`).join("");
     $("#side-foot").innerHTML = `Все данные вымышлены.<br>Генератор ${esc(pr.generator_version)}`;
   } catch (e) {
-    $("#company").textContent = "Сервер недоступен";
-    $("#meta").textContent = e.message;
+    $("#company-head").innerHTML = `<h1>Сервер недоступен</h1><p class="lead">${esc(e.message)}</p>`;
     return;
   }
   await route();
