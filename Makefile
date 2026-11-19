@@ -1,4 +1,4 @@
-.PHONY: install lint test check episodes episodes-check ui demo docker-build docker-check
+.PHONY: install lint test check episodes episodes-check grader-selfcheck ui demo docker-build docker-check
 
 install:
 	pip install -e ".[dev]"
@@ -17,6 +17,10 @@ episodes:
 
 episodes-check:
 	python -m auditgym.generator build --check
+
+# oracle = 1.0, молчание, flag-all < 0, перестановка и смена ID на каждом эпизоде
+grader-selfcheck:
+	python -m auditgym.grader selfcheck episodes
 
 ui:
 	python ui/server.py
