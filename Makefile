@@ -1,4 +1,4 @@
-.PHONY: install lint test check demo docker-build docker-check
+.PHONY: install lint test check episodes episodes-check demo docker-build docker-check
 
 install:
 	pip install -e ".[dev]"
@@ -10,7 +10,13 @@ test:
 	pytest -q
 
 # Единая команда проверки (будет расширена: генерация эпизодов + sha256, прогон 4 политик, приёмка)
-check: lint test
+check: lint test episodes-check
+
+episodes:
+	python -m auditgym.generator build
+
+episodes-check:
+	python -m auditgym.generator build --check
 
 demo:
 	python -m auditgym.runner.demo
