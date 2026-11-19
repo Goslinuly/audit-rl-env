@@ -1,4 +1,4 @@
-.PHONY: install lint test check episodes episodes-check demo docker-build docker-check
+.PHONY: install lint test check episodes episodes-check ui demo docker-build docker-check
 
 install:
 	pip install -e ".[dev]"
@@ -17,6 +17,9 @@ episodes:
 
 episodes-check:
 	python -m auditgym.generator build --check
+
+ui:
+	python ui/server.py
 
 demo:
 	python -m auditgym.runner.demo

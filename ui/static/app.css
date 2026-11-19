@@ -263,3 +263,5 @@ tr.flash td { animation: flash 1.6s ease-out; }
   .diff { grid-template-columns: 1fr; }
   .table-wrap { max-height: none; }
 }
+
+table.compact .num .faint { display: none; }

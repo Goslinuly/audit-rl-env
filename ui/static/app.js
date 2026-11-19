@@ -321,7 +321,7 @@ function viewOverview() {
       <div class="card-body">${dailyChart()}</div></div>
     <div class="card"><div class="card-head"><div class="card-title">Обороты по счетам учёта</div>
       <span class="chip ${totD === totC ? "good" : "bad"}">Дт ${totD === totC ? "=" : "≠"} Кт</span></div>
-      <div class="table-wrap" style="max-height:340px"><table><thead><tr><th>Счёт</th><th class="num">Строк</th><th class="num">Дебет</th><th class="num">Кредит</th></tr></thead><tbody>
+      <div class="table-wrap" style="max-height:340px"><table class="compact"><thead><tr><th>Счёт</th><th class="num">Строк</th><th class="num">Дебет, ${esc(base)}</th><th class="num">Кредит, ${esc(base)}</th></tr></thead><tbody>
       ${accRows.map(([a, x]) => `<tr data-filter-account="${esc(a)}"><td class="mono">${esc(a)}</td><td class="num">${x.n}</td><td class="num">${money(x.d, base)}</td><td class="num">${money(x.c, base)}</td></tr>`).join("")}
       <tr><td><b>Итого</b></td><td></td><td class="num"><b>${money(totD, base)}</b></td><td class="num"><b>${money(totC, base)}</b></td></tr>
       </tbody></table></div></div>
