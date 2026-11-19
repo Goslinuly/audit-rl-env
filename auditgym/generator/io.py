@@ -56,9 +56,9 @@ def write_episode(public: dict, private: dict, out_dir: str | Path) -> Path:
     (out / "public").mkdir(parents=True, exist_ok=True)
     (out / "private").mkdir(parents=True, exist_ok=True)
     for name, text in public_files(public).items():
-        (out / "public" / name).write_text(text, encoding="utf-8")
-    (out / "private" / "truth.json").write_text(dump_json(private["truth"]), encoding="utf-8")
-    (out / "private" / "provenance.json").write_text(dump_json(private["provenance"]), encoding="utf-8")
+        (out / "public" / name).write_text(text, encoding="utf-8", newline="\n")
+    (out / "private" / "truth.json").write_text(dump_json(private["truth"]), encoding="utf-8", newline="\n")
+    (out / "private" / "provenance.json").write_text(dump_json(private["provenance"]), encoding="utf-8", newline="\n")
     return out
 
 

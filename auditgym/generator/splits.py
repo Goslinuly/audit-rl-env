@@ -37,7 +37,7 @@ def build_split(split: str, out_root: Path, root: Path = REPO_ROOT) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     for item, ep in iter_split(split, root):
         ep.write(out / item["name"])
-    (out / "SHA256SUMS").write_text(checksums(out), encoding="utf-8")
+    (out / "SHA256SUMS").write_text(checksums(out), encoding="utf-8", newline="\n")
     return out
 
 
