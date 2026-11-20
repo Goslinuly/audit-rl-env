@@ -12,4 +12,61 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
-      - run: make check
+      - name: Full team verification
+        run: python -m auditgym.runner.validate --out runs/ci-check --deadline 600
+      - name: Build installable wheel
+        run: python -m pip wheel --no-deps --wheel-dir dist .
+      - name: Check installed wheel outside source checkout
+        run: python tools/check_wheel.py dist/*.whl
+      - name: Save verification reports and wheel
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: team-check-and-wheel
+          path: |
+            runs/ci-check/validation.json
+            runs/ci-check/acceptance.json
+            runs/ci-check/junit.xml
+            dist/*.whl
+          retention-days: 14
+  isolated-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build dependency-complete image
+        run: docker build -t audit-rl-env .
+      - name: Full check without network, 2 CPU, 4 GiB, 10 minute deadline
+        run: >-
+          docker run --name auditgym-validation --network none --cpus 2 --memory 4g
+          audit-rl-env python -m auditgym.runner.validate
+          --out /app/runs/container-check --deadline 600
+      - name: Collect validation report
+        if: always()
+        run: |
+          mkdir -p runs/container-check
+          docker cp auditgym-validation:/app/runs/container-check/validation.json runs/container-check/ || true
+          docker cp auditgym-validation:/app/runs/container-check/acceptance.json runs/container-check/ || true
+          docker cp auditgym-validation:/app/runs/container-check/junit.xml runs/container-check/ || true
+          if [ -f runs/container-check/validation.json ]; then
+            cat runs/container-check/validation.json >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Verify applied container constraints
+        if: always()
+        run: >-
+          docker inspect --format '{{json .HostConfig}}' auditgym-validation |
+          python -c 'import json,sys; d=json.load(sys.stdin);
+          assert d["Memory"] == 4294967296;
+          assert d["NanoCpus"] == 2000000000;
+          assert d["NetworkMode"] == "none";
+          print("Verified: no network, 2 CPUs, 4 GiB")'
+      - name: Save isolated container reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: isolated-container-reports
+          path: runs/container-check/
+          retention-days: 14
+      - name: Remove validation container
+        if: always()
+        run: docker rm -f auditgym-validation || true

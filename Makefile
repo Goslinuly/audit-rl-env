@@ -10,7 +10,8 @@ test:
 	pytest -q
 
 # Единая команда проверки (будет расширена: генерация эпизодов + sha256, прогон 4 политик, приёмка)
-check: lint test episodes-check
+check:
+	python -m auditgym.runner.validate
 
 episodes:
 	python -m auditgym.generator build

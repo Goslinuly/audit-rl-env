@@ -3,3 +3,11 @@
 **/__pycache__
 .pytest_cache
 .ruff_cache
+runs
+dist
+build
+*.egg-info
+.env
+out
+.mypy_cache
+episodes/private_*/
