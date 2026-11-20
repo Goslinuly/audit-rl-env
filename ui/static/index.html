@@ -1,98 +1,171 @@
 <!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>auditgym</title>
-  <meta name="description" content="Тренажёр для ИИ-аудитора: вымышленные компании с ошибками в учёте и эталонные ответы.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 21l4-10 4 7 3-4 3 7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/app.css">
-</head>
-<body>
-  <div class="app">
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div class="logo" aria-hidden="true">
-          <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8"/><path d="M9 21l4-10 4 7 3-4 3 7"/></svg>
-        </div>
-        <div>
-          <div class="brand-name">auditgym</div>
-          <div class="brand-sub">Тренажёр для ИИ-аудитора</div>
-        </div>
-      </div>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>auditgym — аудит компаний</title></head><body>
+<div id="audit-prototype" aria-label="Интерактивный прототип auditgym">
+<style>
+/* A directly opened fragment needs a dark document canvas behind rounded corners. */
+html:has(body > #audit-prototype),body:has(> #audit-prototype){background:#080f1c;color-scheme:dark}
+body:has(> #audit-prototype){margin:0}
 
-      <button class="btn wide" id="gen-toggle" aria-expanded="false">+ Новая компания</button>
-      <form class="gen" id="gen-form" hidden>
-        <label class="field">
-          <span>Какие ошибки внести</span>
-          <select id="gen-preset"></select>
-        </label>
-        <label class="field">
-          <span>Вариант</span>
-          <div class="seed-row">
-            <input id="gen-seed" type="number" min="0" max="1000000000" value="42">
-            <button type="button" class="icon-btn" id="gen-dice" title="Случайный вариант" aria-label="Случайный вариант">
-              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.4"/><circle cx="15.5" cy="15.5" r="1.4"/><circle cx="15.5" cy="8.5" r="1.4"/><circle cx="8.5" cy="15.5" r="1.4"/></svg>
-            </button>
-          </div>
-        </label>
-        <button type="submit" class="btn primary wide">Создать</button>
-        <p class="hint">Один и тот же вариант всегда даёт одну и ту же компанию.</p>
-      </form>
+#audit-prototype{--ag-accent:#087f80;--ag-soft:#e6f5f2;--ag-line:#e2e9ec;--ag-ink:#172c38;--ag-sub:#617581;--ag-radius:12px;color:var(--ag-ink);background:#f5f8fa;font:14px/1.5 Inter,Segoe UI,Arial,sans-serif;border:1px solid var(--ag-line);border-radius:16px;overflow:hidden}#audit-prototype *{box-sizing:border-box}#audit-prototype button,#audit-prototype input,#audit-prototype select{font:inherit}#audit-prototype button{cursor:pointer}#audit-prototype button:focus-visible,#audit-prototype input:focus-visible,#audit-prototype select:focus-visible{outline:3px solid #65bdbd;outline-offset:3px}#audit-prototype button:disabled{opacity:.5;cursor:default}#audit-prototype .ag-shell{display:grid;grid-template-columns:178px minmax(0,1fr)}#audit-prototype .ag-side{background:#fff;border-right:1px solid var(--ag-line);padding:24px 14px;display:flex;flex-direction:column;gap:24px}#audit-prototype .ag-brand{display:flex;gap:10px;align-items:center;padding:0 8px}#audit-prototype .ag-mark{display:grid;gap:3px;color:var(--ag-accent)}#audit-prototype .ag-mark span{width:23px;height:6px;background:currentColor;border-radius:2px}#audit-prototype .ag-mark span:nth-child(2){width:17px}#audit-prototype .ag-word{font-size:23px;letter-spacing:-1px;font-weight:700}#audit-prototype .ag-caption{font-size:11px;color:var(--ag-sub);letter-spacing:.04em}#audit-prototype .ag-navigation{display:grid;gap:7px}#audit-prototype .ag-nav{display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--ag-sub);text-align:left;padding:11px;border-radius:8px}#audit-prototype .ag-nav[aria-current=page]{color:var(--ag-accent);background:var(--ag-soft);font-weight:600}#audit-prototype .ag-foot{margin-top:auto;padding:8px;color:var(--ag-sub);font-size:12px}#audit-prototype .ag-main{min-width:0;padding:25px;display:grid;gap:20px}#audit-prototype .ag-top,#audit-prototype .ag-heading,#audit-prototype .ag-actions,#audit-prototype .ag-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}#audit-prototype .ag-top{padding-right:68px;color:var(--ag-sub);font-size:12px}#audit-prototype .ag-demo{display:inline-flex;align-items:center;gap:6px}#audit-prototype .ag-dot{width:6px;height:6px;background:var(--ag-accent);border-radius:50%;display:inline-block}#audit-prototype h1,#audit-prototype h2,#audit-prototype h3,#audit-prototype p{margin:0}#audit-prototype h1{font-size:27px;letter-spacing:-.8px;line-height:1.2;font-weight:650}#audit-prototype h2{font-size:15px;font-weight:600}#audit-prototype h3{font-size:14px;font-weight:600}#audit-prototype .ag-sub{color:var(--ag-sub);font-size:12px;margin-top:5px}#audit-prototype .ag-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#fff;border:1px solid var(--ag-line);border-radius:7px;padding:8px 12px;color:var(--ag-ink)}#audit-prototype .ag-primary{background:var(--ag-accent);border-color:var(--ag-accent);color:#fff}#audit-prototype .ag-quiet{border:0;background:transparent;color:var(--ag-accent);padding:4px 0;text-align:left}#audit-prototype .ag-select,#audit-prototype .ag-input{background:#fff;border:1px solid var(--ag-line);border-radius:7px;padding:8px 10px;color:var(--ag-ink);max-width:100%;min-width:0}#audit-prototype .ag-input{width:210px}#audit-prototype .ag-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}#audit-prototype .ag-card{background:#fff;border:1px solid var(--ag-line);border-radius:var(--ag-radius);padding:17px;min-width:0}#audit-prototype .ag-stat-label{font-size:12px;color:var(--ag-sub)}#audit-prototype .ag-value{font-size:27px;font-weight:600;letter-spacing:-.8px;margin-top:8px;font-variant-numeric:tabular-nums;white-space:nowrap}#audit-prototype .ag-stat-note{font-size:11px;color:var(--ag-sub);margin-top:4px}#audit-prototype .ag-two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:15px}#audit-prototype .ag-chart{display:flex;gap:10px;height:176px;align-items:end;margin-top:20px;border-bottom:1px solid var(--ag-line);padding:0 6px 22px}#audit-prototype .ag-column{flex:1;min-width:0;position:relative;height:100%;display:flex;align-items:end;justify-content:center}#audit-prototype .ag-bar{width:68%;background:var(--ag-accent);border-radius:3px 3px 0 0;opacity:.78;transition:height .25s}#audit-prototype .ag-column small{position:absolute;bottom:-20px;font-size:11px;color:var(--ag-sub)}#audit-prototype .ag-chart-note{display:flex;gap:12px;margin-top:17px;font-size:11px;color:var(--ag-sub)}#audit-prototype .ag-risk{display:grid;gap:17px;margin-top:19px}#audit-prototype .ag-risk-line{display:grid;grid-template-columns:1fr 80px 16px;align-items:center;gap:8px;font-size:12px}#audit-prototype .ag-track{height:6px;background:#f0f3f5;border-radius:3px;overflow:hidden}#audit-prototype .ag-risk-fill{height:100%;background:#dc9266}#audit-prototype .ag-scroll{overflow-x:auto;margin-top:15px}#audit-prototype table{width:100%;border-collapse:collapse;text-align:left;font-size:12px}#audit-prototype th{font-weight:500;color:var(--ag-sub);background:#f7f9fa;white-space:nowrap}#audit-prototype th,#audit-prototype td{padding:11px 9px;border-bottom:1px solid #edf1f3;vertical-align:middle}#audit-prototype .ag-number{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}#audit-prototype .ag-id{color:var(--ag-accent);font-size:12px;font-weight:600}#audit-prototype .ag-badge{display:inline-block;font-size:11px;border-radius:5px;padding:3px 7px;background:#fff2de;color:#93601b;white-space:nowrap}#audit-prototype .ag-badge.done{background:var(--ag-soft);color:var(--ag-accent)}#audit-prototype .ag-empty{text-align:center;padding:30px;color:var(--ag-sub)}#audit-prototype .ag-timeline{display:grid;gap:17px;margin-top:20px}#audit-prototype .ag-event{display:grid;grid-template-columns:23px 1fr;gap:9px}#audit-prototype .ag-event-num{width:22px;height:22px;border-radius:50%;background:var(--ag-soft);color:var(--ag-accent);text-align:center;font-size:12px;padding-top:2px}#audit-prototype .ag-event strong{font-weight:600;font-size:12px}#audit-prototype .ag-context{display:flex;gap:20px;flex-wrap:wrap;padding:12px 15px;background:#eef3f5;border-radius:8px;color:var(--ag-sub);font-size:12px}#audit-prototype .ag-context strong{color:var(--ag-ink);font-weight:600}#audit-prototype .ag-local-tabs{display:flex;gap:15px;border-bottom:1px solid var(--ag-line);margin-bottom:14px;flex-wrap:wrap}#audit-prototype .ag-tab{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ag-sub);padding:9px 0}#audit-prototype .ag-tab[aria-pressed=true]{border-bottom-color:var(--ag-accent);color:var(--ag-accent)}#audit-prototype tr.ag-selected{background:var(--ag-soft)}#audit-prototype .ag-discrepancy{font-size:34px;color:#9a661f;font-weight:600;letter-spacing:-1px;margin:9px 0 16px;font-variant-numeric:tabular-nums}#audit-prototype .ag-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:18px;border-bottom:1px solid var(--ag-line)}#audit-prototype .ag-compare b{display:block;font-size:18px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}#audit-prototype .ag-evidence{margin-top:18px;display:flex;gap:7px;flex-wrap:wrap}#audit-prototype .ag-evidence button{background:var(--ag-soft);color:var(--ag-accent);border:0;border-radius:6px;padding:7px 9px;font-size:12px}#audit-prototype .ag-evidence button[aria-pressed=true]{box-shadow:inset 0 0 0 1px var(--ag-accent)}#audit-prototype .ag-proof{margin-top:14px;padding:12px;background:#f6f8fa;border-radius:7px;font-size:12px;overflow-wrap:anywhere}#audit-prototype .ag-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:17px}#audit-prototype .ag-step{padding:12px 8px;border:1px solid var(--ag-line);border-radius:7px;background:#f7f9fa;color:var(--ag-sub);text-align:left;font-size:12px}#audit-prototype .ag-step[aria-pressed=true]{background:var(--ag-accent);color:#fff;border-color:var(--ag-accent)}#audit-prototype .ag-step-no{display:block;opacity:.7;font-size:11px;margin-bottom:5px}#audit-prototype .ag-step-detail{margin-top:14px;padding:14px;background:#f6f8fa;border-radius:8px;display:grid;gap:7px;font-size:12px}#audit-prototype pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;margin:6px 0 0}#audit-prototype .ag-controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap}#audit-prototype .ag-lower{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap}#audit-prototype .ag-status{color:var(--ag-accent);font-size:12px;min-height:18px}#audit-prototype [hidden]{display:none!important}@media(max-width:850px){#audit-prototype .ag-shell{grid-template-columns:150px minmax(0,1fr)}#audit-prototype .ag-main{padding:18px}#audit-prototype .ag-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-prototype .ag-two{grid-template-columns:1fr}#audit-prototype .ag-top{padding-right:35px}#audit-prototype .ag-value{font-size:26px}}@media(max-width:550px){#audit-prototype .ag-shell{grid-template-columns:1fr}#audit-prototype .ag-side{padding:15px;border-right:0;border-bottom:1px solid var(--ag-line);gap:12px}#audit-prototype .ag-navigation{display:flex;flex-wrap:wrap}#audit-prototype .ag-foot{display:none}#audit-prototype .ag-main{padding:14px}#audit-prototype h1{font-size:24px}#audit-prototype .ag-steps{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-prototype .ag-actions{width:100%}#audit-prototype .ag-top{padding-right:0}#audit-prototype .ag-metrics{gap:8px}#audit-prototype .ag-card{padding:13px}#audit-prototype .ag-value{font-size:23px}#audit-prototype .ag-context{gap:10px}#audit-prototype .ag-risk-line{grid-template-columns:1fr 65px 16px}}@media(prefers-reduced-motion:reduce){#audit-prototype *{transition:none!important}}
+</style>
+<div class="ag-shell">
+<aside class="ag-side"><div class="ag-brand"><div class="ag-mark" aria-hidden="true"><span></span><span></span><span></span></div><div><div class="ag-word">auditgym</div><div class="ag-caption">AUDIT INTELLIGENCE</div></div></div><nav class="ag-navigation" aria-label="Основная навигация"><button class="ag-nav" data-page="overview" aria-current="page"><i data-lucide="layout-dashboard" aria-hidden="true"></i>Обзор</button><button class="ag-nav" data-page="companies"><i data-lucide="building-2" aria-hidden="true"></i>Компании</button><button class="ag-nav" data-page="episodes"><i data-lucide="layers" aria-hidden="true"></i>Эпизоды</button><button class="ag-nav" data-page="investigation"><i data-lucide="scan-search" aria-hidden="true"></i>Расследование</button><button class="ag-nav" data-page="comparison"><i data-lucide="git-compare-arrows" aria-hidden="true"></i>Сравнение агентов</button><button class="ag-nav" data-page="reports"><i data-lucide="file-chart-column" aria-hidden="true"></i>Отчёты</button></nav><div class="ag-foot"><span class="ag-dot"></span> Лаборатория аудита<br>Рабочий каталог браузера<br>Синтетические компании</div></aside>
+<main class="ag-main">
+<div class="ag-top"><span>Компании / <strong id="ag-company">Арна</strong></span><span class="ag-demo"><span class="ag-dot"></span>API команды · реальные эпизоды</span></div>
+<div class="ag-heading"><div><h1 id="ag-title">Обзор компании</h1><p class="ag-sub" id="ag-subtitle">Финансовые данные и результаты проверки</p></div><div class="ag-actions"><select class="ag-select" id="ag-episode" aria-label="Выбор эпизода"><option value="dev_04">DEV · dev_04</option><option value="dev_05">DEV · dev_05</option></select><button class="ag-button ag-primary" id="ag-run"><i data-lucide="play" aria-hidden="true"></i>Запустить агента</button></div></div>
+<section id="ag-overview" aria-label="Обзор компании">
+<div class="ag-metrics" id="ag-metrics"></div>
+<div class="ag-two" style="margin-top:16px"><section class="ag-card"><div class="ag-section-title"><h2>Операции компании</h2><select class="ag-select" id="ag-period" aria-label="Период графика"><option value="month">Ноябрь 2026</option><option value="quarter">IV квартал 2026</option></select></div><p class="ag-sub">Дебетовый оборот, тыс. единиц базовой валюты</p><div class="ag-chart" id="ag-chart" role="img" aria-label="Объём операций по неделям ноября"></div><div class="ag-chart-note"><span><span class="ag-dot"></span> Дебетовый оборот</span><span id="ag-chart-total"></span></div></section><section class="ag-card"><div class="ag-section-title"><h2>Типы расхождений</h2><span class="ag-sub" id="ag-risk-total"></span></div><div class="ag-risk" id="ag-risks"></div><p class="ag-sub" style="margin-top:19px">Число выводов выбранного агента по каждому типу. Отсутствие выводов до запуска не означает отсутствие ошибок.</p></section></div>
+<div class="ag-two" style="margin-top:16px"><section class="ag-card"><div class="ag-section-title"><h2>Требуют проверки</h2><span class="ag-sub" id="ag-table-count"></span></div><div class="ag-controls" style="margin-top:14px"><input class="ag-input" id="ag-search" type="search" placeholder="Поиск по ID документа" aria-label="Поиск по ID документа"><select class="ag-select" id="ag-filter" aria-label="Тип расхождения"><option value="all">Все типы</option><option value="duplicate">Дубли счетов</option><option value="allocation">Распределение</option><option value="fx">Конверсия валют</option><option value="cutoff">Граница периода</option></select></div><div class="ag-scroll"><table><thead><tr><th>Документ</th><th>Расхождение</th><th class="ag-number">Сумма / валюта</th><th>Статус</th></tr></thead><tbody id="ag-findings"></tbody></table></div></section><section class="ag-card"><div class="ag-section-title"><h2>Ход расследования</h2><span class="ag-badge done">Reconciler</span></div><div class="ag-timeline" id="ag-timeline"></div><button class="ag-button" data-open-investigation style="margin-top:20px">Открыть расследование <i data-lucide="arrow-right" aria-hidden="true"></i></button></section></div>
+</section>
+<section id="ag-investigation" aria-label="Расследование эпизода" hidden>
+<div class="ag-context"><span>Агент <strong id="ag-active-policy">Reconciler</strong></span><span>Шаг <strong id="ag-step-count">1 / 100</strong></span><span>Доказательства <strong id="ag-proof-count">0 / 3</strong></span><span>Режим <strong>DEV</strong></span></div>
+<div class="ag-two" style="margin-top:16px"><section class="ag-card"><div class="ag-section-title"><h2>Документы эпизода</h2><span class="ag-sub">Выберите строку</span></div><div class="ag-local-tabs" aria-label="Таблицы документов"><button class="ag-tab" data-table="all" aria-pressed="true">Все</button><button class="ag-tab" data-table="invoices" aria-pressed="false">Счета</button><button class="ag-tab" data-table="payments" aria-pressed="false">Платежи</button></div><div class="ag-scroll"><table><thead><tr><th>ID документа</th><th>Дата</th><th class="ag-number">Сумма документа</th></tr></thead><tbody id="ag-records"></tbody></table></div><div class="ag-lower"><span class="ag-sub" id="ag-record-count"></span><button class="ag-quiet" id="ag-back">← К обзору компании</button></div></section><section class="ag-card"><div class="ag-section-title"><h2>Проверка расхождения</h2><span class="ag-badge" id="ag-issue-type"></span></div><p class="ag-sub" style="margin-top:18px">Заявленная агентом сумма</p><div class="ag-discrepancy" id="ag-amount"></div><div class="ag-compare"><div><span class="ag-stat-label">Затронутые документы</span><b id="ag-booked"></b></div><div><span class="ag-stat-label">Валюта вывода</span><b id="ag-expected"></b></div></div><h3 style="margin-top:18px">Доказательства</h3><div class="ag-evidence" id="ag-evidence"></div><div class="ag-proof" id="ag-proof-detail"></div><p class="ag-sub" id="ag-explanation" style="margin-top:14px"></p></section></div>
+<section class="ag-card" style="margin-top:16px"><div class="ag-section-title"><h2>Шаги агента</h2><span class="ag-sub">Траектория AuditEnv</span></div><div class="ag-steps" id="ag-steps"></div><div class="ag-step-detail" id="ag-step-detail"></div><div class="ag-lower"><div class="ag-controls"><button class="ag-button" id="ag-prev">← Назад</button><button class="ag-button ag-primary" id="ag-next">Следующий шаг →</button></div><button class="ag-button" id="ag-confirm">Подтвердить вывод</button></div></section><div class="ag-report-link"><button class="ag-button" data-page="reports">К итогам расследования →</button></div>
+</section>
+<section id="ag-companies" aria-label="Компании" hidden>
+<div class="ag-section-title"><div class="ag-context"><span>Компании <strong id="ag-company-total">2</strong></span><span>Эпизоды <strong id="ag-episode-total">2</strong></span><span>Базовая валюта <strong>KZT</strong></span></div><button class="ag-button ag-primary" id="ag-new-company">+ Новая компания</button></div>
+<form class="ag-card ag-create-form" id="ag-company-form" hidden novalidate><div class="ag-section-title"><h2>Новая синтетическая компания</h2><button type="button" class="ag-button" id="ag-company-cancel">Отмена</button></div><div class="ag-form-grid"><label>Название компании<input class="ag-input" id="ag-company-name" placeholder="Например, Алатау" maxlength="48" required autocomplete="off"></label><label>Сфера деятельности<select class="ag-select" id="ag-company-sector"><option>Оптовая торговля</option><option>Сервисная компания</option><option>Производство</option><option>Логистика</option></select></label></div><p class="ag-sub">Название для рабочего каталога. Финансовые данные создаёт генератор команды.</p><p id="ag-company-error" class="ag-form-error" role="alert"></p><button class="ag-button ag-primary" type="submit">Создать компанию</button></form>
+<div class="ag-company-grid" id="ag-company-cards" style="margin-top:16px"></div>
+</section>
+<section id="ag-episodes" aria-label="Эпизоды" hidden>
+<div class="ag-section-title" style="margin-bottom:16px"><span class="ag-sub">Каталог и настройки генерации</span><button class="ag-button ag-primary" id="ag-new-episode">+ Сгенерировать эпизод</button></div>
+<form class="ag-card ag-create-form" id="ag-generator-form" hidden novalidate><div class="ag-section-title"><div><h2>Генерация эпизода</h2><p class="ag-sub">Генератор команды</p></div><button class="ag-button" id="ag-generator-cancel" type="button">Отмена</button></div><div class="ag-form-grid"><label>Компания<select class="ag-select" id="ag-generator-company"></select></label><label>Пресет<select class="ag-select" id="ag-generator-preset"><option value="mixed_small">Смешанный · небольшой</option><option value="mixed_medium">Смешанный · расширенный</option><option value="single_type">Один тип · конверсия валют</option></select></label><label>Seed<input class="ag-input" id="ag-generator-seed" type="number" min="0" max="1000000000" step="1" value="7" inputmode="numeric" required></label><div class="ag-preset-info"><span class="ag-stat-label">Состав эпизода</span><p id="ag-preset-description"></p></div></div><p class="ag-sub">Одинаковые пресет и seed дают одинаковые документы генератора команды. Каталог сохраняется в этом браузере.</p><p class="ag-form-error" id="ag-generator-error" role="alert"></p><div class="ag-controls"><button class="ag-button ag-primary" type="submit">Сгенерировать</button><span class="ag-sub">Новый эпизод появится в каталоге</span></div></form>
+<section class="ag-card ag-generated-result" id="ag-generated-result" hidden aria-live="polite"><div class="ag-section-title"><div><h2 id="ag-generated-title">Эпизод готов</h2><p class="ag-sub" id="ag-generated-description"></p></div><button class="ag-button ag-primary" id="ag-generated-open">Открыть расследование →</button></div></section>
+<section class="ag-card"><div class="ag-section-title"><div><h2>Каталог эпизодов</h2><p class="ag-sub">Один эпизод — одна компания и набор документов для проверки</p></div><select id="ag-company-filter" class="ag-select" aria-label="Компания в каталоге"><option value="all">Все компании</option><option value="dev_04">Арна</option><option value="dev_05">Самал</option></select></div><div class="ag-scroll"><table><thead><tr><th>Эпизод / компания</th><th>Документы</th><th>Источник / seed</th><th>Базовая валюта</th><th>Проверка</th></tr></thead><tbody id="ag-episode-list"></tbody></table></div></section>
+<section class="ag-card" style="margin-top:16px"><div class="ag-section-title"><h2>Выбранный эпизод</h2><span class="ag-badge done" id="ag-selected-episode"></span></div><div id="ag-episode-detail" style="margin-top:14px"></div><div class="ag-controls" style="margin-top:18px"><button class="ag-button ag-primary" id="ag-episode-open">Открыть обзор компании →</button><button class="ag-button" data-open-investigation>Начать расследование</button><button class="ag-button" data-page="comparison">Сравнить агентов</button></div></section>
+</section>
+<section id="ag-comparison" aria-label="Сравнение агентов" hidden>
+<section class="ag-card"><div class="ag-section-title"><div><h2>Результаты базовых политик</h2><p class="ag-sub">Метрики вычисляются сервером; пустые значения означают, что прогон ещё не выполнен</p></div><div class="ag-controls"><select id="ag-compare-scope" class="ag-select" aria-label="Эпизоды для сравнения"><option value="all">Выполненные прогоны</option><option value="current">Выбранный эпизод</option></select><select id="ag-compare-sort" class="ag-select" aria-label="Сортировка агентов"><option value="f1">По F1 ↓</option><option value="reward">По награде ↓</option><option value="steps">По шагам ↑</option></select></div></div><div class="ag-scroll"><table><thead><tr><th>Агент</th><th class="ag-number">Precision</th><th class="ag-number">Recall</th><th class="ag-number">F1</th><th class="ag-number">Награда</th><th class="ag-number">Шаги</th></tr></thead><tbody id="ag-agent-list"></tbody></table></div><p class="ag-sub" style="margin-top:14px">Precision — точность выводов · Recall — найденные ошибки · F1 — баланс точности и полноты. Шаги до submit.</p></section>
+<section class="ag-card" style="margin-top:16px"><div class="ag-section-title"><h2 id="ag-agent-name"></h2><span class="ag-badge done" id="ag-compare-label"></span></div><p id="ag-agent-description" class="ag-sub"></p><div class="ag-agent-summary" id="ag-agent-summary"></div><details style="margin-top:16px"><summary>Как считается награда</summary><p class="ag-sub">Для каждого эпизода: clip(2 × F1 − 1 − 0,002 × шаги, −1, 1). В сводной таблице — средние метрики только выполненных прогонов. Ручное подтверждение не меняет оценку grader.</p></details><div class="ag-lower"><span class="ag-sub" id="ag-agent-limits"></span><button class="ag-button" id="ag-compare-open">Открыть эпизод →</button></div></section>
+</section>
+<section id="ag-reports" aria-label="Отчёты" hidden>
+<section class="ag-card"><div class="ag-section-title"><div><h2>Итоги расследования</h2><p class="ag-sub" id="ag-report-company"></p></div><span class="ag-badge" id="ag-report-status"></span></div><div class="ag-agent-summary" id="ag-report-summary"></div><div class="ag-lower"><span class="ag-sub" id="ag-report-progress"></span><button class="ag-button" data-open-investigation>Продолжить расследование →</button></div></section>
+<section class="ag-card" style="margin-top:16px"><div class="ag-section-title"><div><h2>Реестр выводов</h2><p class="ag-sub">Скачиваемый отчёт содержит те же выводы и статусы</p></div><select class="ag-select" id="ag-report-scope" aria-label="Содержание отчёта"><option value="all">Все расхождения</option><option value="confirmed">Только подтверждённые</option></select></div><div class="ag-scroll"><table><thead><tr><th>Документ / тип</th><th class="ag-number">Заявленная сумма</th><th>Доказательства</th><th>Статус</th></tr></thead><tbody id="ag-report-findings"></tbody></table></div></section>
+<section class="ag-card" style="margin-top:16px"><div class="ag-section-title"><div><h2>Скачать отчёт</h2><p class="ag-sub">Компания, период, итоги, выводы и ID доказательств</p></div><div class="ag-controls"><select class="ag-select" id="ag-report-format" aria-label="Формат отчёта"><option value="txt">Текстовый отчёт · TXT</option><option value="csv">Таблица выводов · CSV</option><option value="json">Структурированные данные · JSON</option></select><button class="ag-button ag-primary" id="ag-report-download">↓ Скачать отчёт</button></div></div><p class="ag-sub" id="ag-report-filename" style="margin-top:14px"></p><details style="margin-top:14px"><summary>Предпросмотр текстового отчёта</summary><pre class="ag-report-preview" id="ag-report-preview"></pre></details><p class="ag-sub" id="ag-report-download-status" role="status" aria-live="polite" style="margin-top:14px"></p></section>
+</section>
+<section class="ag-card" id="ag-empty-state" hidden><h2>Нет доступных эпизодов</h2><p class="ag-sub">Создайте компанию или сгенерируйте эпизод для существующей компании.</p><div class="ag-controls" style="margin-top:16px"><button class="ag-button ag-primary" data-page="companies">Перейти к компаниям</button><button class="ag-button" data-page="episodes">Перейти к эпизодам</button></div></section>
+<div class="ag-status" id="ag-status" role="status" aria-live="polite"></div>
+<dialog class="ag-modal" id="ag-delete-dialog" aria-labelledby="ag-delete-title" aria-describedby="ag-delete-description"><h2 id="ag-delete-title">Подтвердите удаление</h2><p id="ag-delete-description" class="ag-sub" style="margin-top:14px"></p><div class="ag-proof" id="ag-delete-impact"></div><p class="ag-sub" style="margin-top:14px">Удаление применяется только к рабочему каталогу этого браузера.</p><div class="ag-controls" style="margin-top:22px;justify-content:flex-end"><button type="button" class="ag-button" id="ag-delete-cancel" autofocus>Отмена</button><button type="button" class="ag-button ag-danger" id="ag-delete-confirm">Удалить</button></div></dialog>
+</main></div>
+<style>
+#audit-prototype .ag-company-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}#audit-prototype .ag-company-avatar{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;background:var(--ag-soft);color:var(--ag-accent);border-radius:9px;font-size:20px;font-weight:600}#audit-prototype .ag-company-title{display:flex;gap:12px;align-items:center}#audit-prototype .ag-company-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:22px 0 18px;padding:14px 0;border-top:1px solid var(--ag-line);border-bottom:1px solid var(--ag-line)}#audit-prototype .ag-company-stats b{display:block;font-size:20px;font-weight:600;margin-top:5px}#audit-prototype .ag-company-stats span{font-size:11px;color:var(--ag-sub)}#audit-prototype .ag-agent-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px 0;margin-top:10px;border-bottom:1px solid var(--ag-line)}#audit-prototype .ag-agent-summary b{font-size:24px;font-weight:600;display:block;margin-top:4px;font-variant-numeric:tabular-nums}#audit-prototype .ag-episode-meta{display:flex;gap:18px;flex-wrap:wrap;color:var(--ag-sub);font-size:12px}#audit-prototype .ag-episode-meta strong{color:var(--ag-ink)}#audit-prototype .ag-navigation .ag-nav{overflow-wrap:anywhere}#audit-prototype .ag-agent-note{max-width:430px}#audit-prototype .ag-compare-chip{font-size:11px;color:var(--ag-sub)}@media(max-width:700px){#audit-prototype .ag-company-grid{grid-template-columns:1fr}}@media(pointer:coarse){#audit-prototype button,#audit-prototype select,#audit-prototype input{min-height:44px}#audit-prototype input,#audit-prototype select{font-size:16px}}
+</style>
+<style>
+#audit-prototype .ag-report-preview{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;color:var(--ag-ink);padding:16px;border-radius:8px;margin-top:12px;font:12px/1.7 Consolas,monospace}#audit-prototype .ag-report-proof{max-width:180px;font-size:11px;color:var(--ag-sub);overflow-wrap:anywhere}#audit-prototype .ag-report-link{display:flex;justify-content:flex-end;margin-top:12px}#audit-prototype #ag-report-filename{overflow-wrap:anywhere}@media(max-width:550px){#audit-prototype #ag-report-summary{grid-template-columns:1fr}#audit-prototype #ag-report-summary>div{display:flex;align-items:center;justify-content:space-between}#audit-prototype #ag-report-summary b{font-size:22px}}
+</style>
+<style>
+#audit-prototype .ag-create-form{margin:16px 0}#audit-prototype .ag-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}#audit-prototype .ag-form-grid label{display:grid;gap:6px;font-size:12px;color:var(--ag-sub)}#audit-prototype .ag-form-grid input,#audit-prototype .ag-form-grid select{width:100%}#audit-prototype .ag-form-error{color:#a33625;font-size:12px;margin:10px 0;min-height:0}#audit-prototype .ag-form-error:empty{display:none}#audit-prototype .ag-generated-result{margin-bottom:16px;border-color:#95c9bf;background:#f4fbf9}#audit-prototype .ag-preset-info{padding:10px 0;color:var(--ag-sub);font-size:12px}#audit-prototype .ag-preset-info p{margin-top:6px;color:var(--ag-ink)}#audit-prototype .ag-company-title>div{min-width:0;overflow-wrap:anywhere}#audit-prototype .ag-episode-id{max-width:210px;overflow-wrap:anywhere}#audit-prototype #ag-generator-error:empty,#audit-prototype #ag-company-error:empty{display:none}@media(max-width:550px){#audit-prototype .ag-form-grid{grid-template-columns:1fr}}
+</style>
+<style>
+#audit-prototype .ag-danger{color:#a83a2b;background:#fff4f0;border-color:#e9c5bd}#audit-prototype #ag-delete-confirm{background:#a83a2b;color:#fff;border-color:#a83a2b}#audit-prototype .ag-modal{width:440px;max-width:calc(100% - 28px);max-height:calc(100% - 28px);padding:24px;border:1px solid var(--ag-line);border-radius:14px;background:#fff;color:var(--ag-ink);box-shadow:0 20px 70px #182c3833}#audit-prototype .ag-modal::backdrop{background:#172c3855}#audit-prototype .ag-row-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}#audit-prototype .ag-row-actions button{font-size:11px;padding:5px 8px}#audit-prototype .ag-management-actions{border-top:1px solid var(--ag-line);padding-top:12px;margin-top:14px}#audit-prototype .ag-edit-notice{color:#93601b;background:#fff7e8;padding:10px 12px;border-radius:7px;margin:12px 0;font-size:12px}#audit-prototype .ag-modal h2{overflow-wrap:anywhere}
+</style>
 
-      <nav class="episodes" id="episode-list" aria-label="Компании"></nav>
-      <footer class="side-foot" id="side-foot"></footer>
-    </aside>
+</div>
 
-    <main class="main">
-      <div class="topbar">
-        <button class="icon-btn menu" id="menu-btn" aria-label="Список компаний">
-          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-        </button>
-        <span class="spacer"></span>
-        <button class="link-btn" id="help-btn">Как это работает</button>
-        <button class="icon-btn" id="theme-btn" title="Тема" aria-label="Переключить тему">
-          <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-        </button>
-      </div>
+<style>
+#audit-prototype .ag-cyber-panel{--ag-sub:#a0b4ce;--ag-line:#29354c;--ag-ink:#edf5ff;position:relative;background:radial-gradient(ellipse at 95% 0%,#262246 0%,transparent 60%),#101827;color:var(--ag-ink);border:1px solid #2c3a52;box-shadow:0 8px 24px #09122212;padding:21px;overflow:hidden}
+#audit-prototype .ag-cyber-panel:before{content:'';position:absolute;top:0;left:21px;width:52px;height:2px;background:#43f0e2;box-shadow:0 0 14px #43f0e277}
+#audit-prototype .ag-cyber-panel h2{letter-spacing:.01em;color:#edf5ff}
+#audit-prototype .ag-cyber-panel .ag-select{background:#192438;color:#d9e9ff;border-color:#35425b}
+#audit-prototype .ag-cyber-panel .ag-sub,#audit-prototype .ag-cyber-panel .ag-chart-note{color:#a0b4ce}
+#audit-prototype .ag-cyber-panel .ag-dot{background:#43f0e2;box-shadow:0 0 7px #43f0e266}
+#audit-prototype .ag-chart{height:214px;margin-top:24px;padding:24px 6px 28px;gap:18px;border-color:#34415a;background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),#819bc01a calc(25% - 1px),#819bc01a 25%)}
+#audit-prototype .ag-column{isolation:isolate}
+#audit-prototype .ag-bar{position:relative;width:59%;max-width:72px;background:linear-gradient(180deg,#70fff1 0%,#19bcca 65%,#175b83 100%);opacity:1;border-radius:5px 5px 0 0;box-shadow:0 0 22px #26dfd51c}
+#audit-prototype .ag-column:last-child .ag-bar{background:linear-gradient(180deg,#d0a8ff,#9963e7 65%,#483d89);box-shadow:0 0 22px #b783ff20}
+#audit-prototype .ag-chart-value{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);font:12px/1.2 Consolas,monospace;white-space:nowrap;color:#edf5ff;font-variant-numeric:tabular-nums}
+#audit-prototype .ag-column small{bottom:-24px;color:#a0b4ce;font-size:11px;white-space:nowrap}
+#audit-prototype .ag-chart-note{justify-content:space-between;flex-wrap:wrap;gap:8px}
+#audit-prototype .ag-chart-note #ag-chart-total{font-family:Consolas,monospace;color:#d9e9ff}
+#audit-prototype .ag-risk{gap:21px;margin-top:26px}
+#audit-prototype .ag-risk-line{grid-template-columns:minmax(0,1fr) 24px;gap:8px;color:#d9e9ff}
+#audit-prototype .ag-risk-line>span:last-child{grid-column:2;grid-row:1;text-align:right;font:13px/1.4 Consolas,monospace;color:#edf5ff}
+#audit-prototype .ag-risk-line .ag-track{grid-column:1 / -1;grid-row:2;height:8px;border-radius:2px;background:#243048;overflow:visible}
+#audit-prototype .ag-risk-fill{border-radius:2px;background:linear-gradient(90deg,#266a8a,#43f0e2);box-shadow:0 0 12px #43f0e224;transition:width .25s}
+@media(max-width:550px){#audit-prototype .ag-cyber-panel{padding:16px}#audit-prototype .ag-chart{gap:8px}#audit-prototype .ag-bar{width:66%}#audit-prototype .ag-chart-value{font-size:11px}}
+#audit-prototype{color-scheme:dark;--ag-accent:#54f4df;--ag-soft:#123333;--ag-line:#29374e;--ag-ink:#e8f0ff;--ag-sub:#a1b2ca;--ag-panel:#111c2d;--ag-field:#0c1524;--ag-violet:#c19aff;background:#080f1c;border-color:#29374e;border-radius:14px}
+#audit-prototype ::selection{background:#23645f;color:#fff}
+#audit-prototype .ag-main{background:radial-gradient(ellipse at 100% 0%,#34225035,transparent 48%),#0b1321}
+#audit-prototype .ag-side{background:linear-gradient(180deg,#101a2b,#0b1422);border-color:var(--ag-line)}
+#audit-prototype .ag-brand{padding-bottom:18px;border-bottom:1px solid var(--ag-line)}
+#audit-prototype .ag-word{color:#eef7ff;letter-spacing:-.8px}
+#audit-prototype .ag-mark{filter:drop-shadow(0 0 7px #43f0e23d)}
+#audit-prototype .ag-mark span:nth-child(2){color:var(--ag-violet)}
+#audit-prototype .ag-caption{font-family:Consolas,monospace;font-size:11px;letter-spacing:.08em}
+#audit-prototype .ag-nav{border:1px solid transparent;transition:background .18s,border-color .18s,color .18s}
+#audit-prototype .ag-nav:hover{background:#16273a;color:#edf5ff}
+#audit-prototype .ag-nav[aria-current=page]{background:linear-gradient(90deg,#173c40,#142d36);border-color:#2c5d61;box-shadow:inset 3px 0 var(--ag-accent),0 0 18px #43f0e20a;color:var(--ag-accent)}
+#audit-prototype .ag-foot{border-top:1px solid var(--ag-line);padding-top:16px}
+#audit-prototype .ag-dot{background:var(--ag-accent);box-shadow:0 0 8px #54f4df55}
+#audit-prototype .ag-top{font-family:Consolas,monospace}
+#audit-prototype h1{color:#f0f5ff;letter-spacing:-.65px}
+#audit-prototype .ag-card{background:linear-gradient(135deg,#142035,#111a2b 70%);border-color:var(--ag-line);box-shadow:0 7px 24px #02071124}
+#audit-prototype .ag-metrics .ag-card{position:relative;overflow:hidden}
+#audit-prototype .ag-metrics .ag-card:before{content:'';position:absolute;top:0;left:18px;width:30px;height:2px;background:var(--ag-accent);box-shadow:0 0 12px #54f4df55}
+#audit-prototype .ag-metrics .ag-card:nth-child(3):before,#audit-prototype .ag-metrics .ag-card:nth-child(4):before{background:var(--ag-violet);box-shadow:0 0 12px #c19aff44}
+#audit-prototype .ag-value,#audit-prototype .ag-agent-summary b,#audit-prototype .ag-company-stats b{color:#eef5ff;font-family:Consolas,monospace;letter-spacing:-.5px}
+#audit-prototype .ag-button{background:#18263a;border-color:#34465e;color:#dfeaff;transition:background .18s,border-color .18s,box-shadow .18s}
+#audit-prototype .ag-button:hover:not(:disabled){background:#20344a;border-color:#588486}
+#audit-prototype .ag-primary{background:linear-gradient(120deg,#69ffe8,#36cfc5);border-color:#54f4df;color:#062326;font-weight:600;box-shadow:0 0 19px #43f0e21c}
+#audit-prototype .ag-primary:hover:not(:disabled){background:#83ffef;border-color:#95fff3;box-shadow:0 0 24px #43f0e233}
+#audit-prototype .ag-quiet{background:transparent;border-color:transparent;color:var(--ag-accent)}
+#audit-prototype .ag-quiet:hover:not(:disabled){background:#173334;border-color:transparent}
+#audit-prototype .ag-select,#audit-prototype .ag-input,#audit-prototype .ag-cyber-panel .ag-select{background:var(--ag-field);color:#e0edff;border-color:#34445e}
+#audit-prototype input::placeholder{color:#8b9cb7;opacity:1}
+#audit-prototype select option{background:#111c2d;color:#e8f0ff}
+#audit-prototype input:focus-visible,#audit-prototype select:focus-visible,#audit-prototype button:focus-visible{outline-color:#54f4df}
+#audit-prototype th{background:#0d1727;color:#aebed5}
+#audit-prototype th,#audit-prototype td{border-bottom-color:#263248}
+#audit-prototype tbody tr:hover{background:#1a2a3b}
+#audit-prototype tr.ag-selected{background:#16343b}
+#audit-prototype .ag-badge{background:#3c2c20;color:#ffd28c;border:1px solid #695034}
+#audit-prototype .ag-badge.done{background:#143a36;color:#7cf7da;border-color:#2d6358}
+#audit-prototype .ag-company-avatar{background:#1c3146;color:#7ffce9;border:1px solid #315a66;box-shadow:inset 0 0 15px #43f0e20a}
+#audit-prototype .ag-context{background:#141f33;border:1px solid #2b3853}
+#audit-prototype .ag-event-num{background:#1a3a3e;color:var(--ag-accent)}
+#audit-prototype .ag-discrepancy{color:#ffd18d;text-shadow:0 0 22px #ffba5f18}
+#audit-prototype .ag-evidence button{background:#183137;color:#7af4df;border:1px solid #2f565c}
+#audit-prototype .ag-evidence button[aria-pressed=true]{background:#214944;box-shadow:inset 0 0 0 1px #54f4df}
+#audit-prototype .ag-proof,#audit-prototype .ag-step-detail,#audit-prototype .ag-report-preview{background:#0b1525;color:#d2dfef;border:1px solid #2a3953}
+#audit-prototype pre{color:#c8daf3}
+#audit-prototype summary{color:#c7d8ed;cursor:pointer}
+#audit-prototype details[open]>summary{color:#7cf7e6}
+#audit-prototype .ag-step{background:#142137;border-color:#34445e;color:#aebed5}
+#audit-prototype .ag-step[aria-pressed=true]{background:linear-gradient(130deg,#26424c,#25314c);border-color:#54f4df;color:#b5fff0;box-shadow:0 0 13px #54f4df15}
+#audit-prototype .ag-tab[aria-pressed=true]{color:var(--ag-accent)}
+#audit-prototype .ag-generated-result{background:linear-gradient(130deg,#14352f,#142638);border-color:#35665c}
+#audit-prototype .ag-form-error{color:#ffa5ad}
+#audit-prototype .ag-edit-notice{background:#342c24;color:#ffdaa3;border:1px solid #665337}
+#audit-prototype .ag-danger{color:#ffacbc;background:#36202e;border-color:#704052}
+#audit-prototype .ag-danger:hover:not(:disabled){background:#4a2739;border-color:#d17490}
+#audit-prototype #ag-delete-confirm{background:#ff839e;color:#2c0915;border-color:#ff9cb2;box-shadow:0 0 20px #ff77951a}
+#audit-prototype #ag-delete-confirm:hover{background:#ffa4b8}
+#audit-prototype .ag-modal{background:linear-gradient(135deg,#1b253c,#111c2d);color:var(--ag-ink);border-color:#566080;box-shadow:0 25px 90px #0009,0 0 40px #ac75f218}
+#audit-prototype .ag-modal::backdrop{background:#020815bb;backdrop-filter:blur(5px)}
+#audit-prototype .ag-cyber-panel{background:radial-gradient(ellipse at 95% 0%,#2b2548 0%,transparent 65%),#111b2d}
+@media(prefers-reduced-motion:reduce){#audit-prototype *{transition:none!important}}
 
-      <header class="company" id="company-head"></header>
-      <div class="modes" id="modes" role="tablist" aria-label="Режим"></div>
-      <p class="mode-hint" id="mode-hint"></p>
 
-      <section id="answers"></section>
+/* Explicit foregrounds prevent table/host defaults leaking into the dark theme. */
+#audit-prototype table{color:var(--ag-ink);background:transparent}
+#audit-prototype table tbody,#audit-prototype table tr,#audit-prototype table td{color:var(--ag-ink)}
+#audit-prototype table th{color:#aebed5}
+#audit-prototype table td.ag-empty{color:var(--ag-sub)}
+#audit-prototype .ag-main,#audit-prototype .ag-side,#audit-prototype .ag-card{color:var(--ag-ink)}
+#audit-prototype h2,#audit-prototype h3{color:var(--ag-ink)}
+#audit-prototype code{color:inherit;background:transparent}
+#audit-prototype input,#audit-prototype select{caret-color:var(--ag-ink)}
 
-      <section class="docs">
-        <h2 class="section-h">Документы компании</h2>
-        <nav class="tabs" id="tabs" role="tablist"></nav>
-        <div id="view"></div>
-      </section>
-    </main>
-
-    <aside class="drawer" id="drawer" aria-hidden="true">
-      <div class="drawer-head">
-        <div id="drawer-title"></div>
-        <button class="icon-btn" id="drawer-close" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-      <div class="drawer-body" id="drawer-body"></div>
-    </aside>
-
-    <div class="modal" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
-      <div class="modal-card">
-        <div class="modal-head">
-          <h2 id="help-title">Как это работает</h2>
-          <button class="icon-btn" id="help-close" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-        </div>
-        <div id="help-body"></div>
-      </div>
-    </div>
-    <div class="scrim" id="scrim"></div>
-  </div>
-  <script src="/app.js"></script>
-</body>
-</html>
+html,body{margin:0;background:#080f1c;color-scheme:dark}
+#audit-prototype{min-height:100vh}
+#audit-prototype table{color:var(--ag-ink)}
+#audit-prototype .ag-value{white-space:normal;overflow-wrap:anywhere}
+#audit-prototype .ag-compare b{font-size:13px;overflow-wrap:anywhere}
+#audit-prototype .ag-proof,#audit-prototype .ag-step-detail{white-space:pre-wrap;max-height:360px;overflow:auto;font-family:Consolas,monospace}
+#audit-prototype .ag-id,#audit-prototype td button{overflow-wrap:anywhere;white-space:normal;max-width:100%;text-align:left}
+#audit-prototype [data-lucide]{width:18px;height:18px;stroke-width:1.5}
+#audit-prototype .ag-metrics .ag-card:last-child .ag-value{font-size:20px}
+@media(max-width:1100px){#audit-prototype .ag-two{grid-template-columns:1fr}}
+</style>
+<script src="/icons.js"></script><script src="/workspace.js"></script></body></html>

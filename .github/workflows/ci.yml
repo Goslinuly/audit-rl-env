@@ -4,6 +4,29 @@ on:
     branches: [main]
   pull_request:
 jobs:
+  web-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -e ".[dev]"
+      - run: npm install --no-audit --no-fund --prefix runs/ui-qa playwright@1.62.1
+      - run: runs/ui-qa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Check all live pages against native team API
+        run: NODE_PATH="$PWD/runs/ui-qa/node_modules" python tools/check_web_ui.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: web-ui-checks
+          path: |
+            runs/web-ui-qa.json
+            runs/web-ui-qa.png
   check:
     runs-on: ubuntu-latest
     steps:
