@@ -3,6 +3,8 @@ FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY auditgym ./auditgym
+COPY pyproject.toml README.md LICENSE ./
+RUN pip install --no-cache-dir .
 COPY configs ./configs
 COPY episodes ./episodes
 COPY ui ./ui

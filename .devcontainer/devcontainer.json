@@ -1,0 +1,17 @@
+{
+  "name": "auditgym web workspace",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "overrideCommand": true,
+  "postCreateCommand": "python -m pip install -e \".[dev]\"",
+  "postAttachCommand": "nohup python ui/server.py > /tmp/auditgym-ui.log 2>&1 &",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "auditgym",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}
