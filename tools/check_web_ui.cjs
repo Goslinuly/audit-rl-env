@@ -80,6 +80,33 @@ const fs = require("node:fs"),
         .textContent()
         .then((t) => t.includes("подтверждён")),
     );
+    await p.locator(".ag-navigation [data-page=overview]").click();
+    await p.locator("#ag-filter").selectOption("fx_conversion");
+    ok(
+      "real discrepancy type filter",
+      (await p.locator("#ag-findings tr").count()) === 2,
+    );
+    await p.locator("#ag-filter").selectOption("all");
+    await p.locator("#ag-search").fill("PAY-GVW5XE");
+    ok("document search", (await p.locator("#ag-findings tr").count()) === 3);
+    await p.locator("#ag-search").fill("");
+    for (let i = 0; i < 6; i++) {
+      await p.locator(".ag-navigation [data-page=overview]").click();
+      await p.locator('[data-finding="' + i + '"]').click();
+      const ids = await p.locator("[data-evidence]").count();
+      for (let j = 0; j < ids; j++) {
+        await p.locator("[data-evidence]").nth(j).click();
+        ok(
+          "public evidence " + i + "/" + j,
+          await p
+            .locator("#ag-proof-detail")
+            .textContent()
+            .then((t) => !t.includes("не найдена")),
+        );
+      }
+    }
+    await p.locator(".ag-navigation [data-page=overview]").click();
+    await p.locator('[data-finding="0"]').click();
     await p.locator("#ag-prev").click();
     ok(
       "real previous step",

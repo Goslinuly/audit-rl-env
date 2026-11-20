@@ -429,6 +429,11 @@
     if (!p) return null;
     if (kind === "policy") return p.policy;
     if (kind === "manifest") return p.manifest;
+    if (kind === "fx") {
+      return p.fx.find(
+        (r) => `${r.date}/${r.source_currency}/${r.target_currency}` === key,
+      );
+    }
     for (const t of kind ? [kind] : ["invoices", "payments", "ledger", "fx"]) {
       const record = p[t]?.find((r) => Object.values(r).some((v) => v === key));
       if (record) return record;
@@ -1070,6 +1075,7 @@
       companies = companies.filter((c) => c.id !== deletion.id);
     save();
     el("delete-dialog").close();
+    el("generated-result").hidden = true;
     deletion = null;
     if (ids.includes(selected?.id)) choose(episodes[0]?.id, page);
     else render();
