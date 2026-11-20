@@ -1,0 +1,67 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[dev]"
+      - name: Verify tagged source
+        run: python -m auditgym.runner.validate --out runs/release-check --deadline 600
+      - name: Build isolated image
+        run: docker build -t audit-rl-env .
+      - name: Verify tagged source without network under resource limits
+        run: >-
+          docker run --name auditgym-release --network none --cpus 2 --memory 4g
+          audit-rl-env python -m auditgym.runner.validate
+          --out /app/runs/container-check --deadline 600
+      - name: Collect release evidence
+        run: |
+          mkdir -p runs/container-check
+          docker cp auditgym-release:/app/runs/container-check/validation.json runs/container-check/
+          docker cp auditgym-release:/app/runs/container-check/acceptance.json runs/container-check/
+          docker cp auditgym-release:/app/runs/container-check/junit.xml runs/container-check/
+          docker inspect --format '{{json .HostConfig}}' auditgym-release > runs/container-check/constraints.json
+      - name: Build and verify installed wheel
+        run: |
+          python -m pip wheel --no-deps --wheel-dir dist .
+          python tools/check_wheel.py dist/*.whl
+      - name: Assemble verified release
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          python -m auditgym.runner.bundle
+          --out dist/auditgym-release.zip --validation runs/release-check
+          --container-validation runs/container-check --release-tag "$RELEASE_TAG"
+          --demo docs/demo/participant4.cast --wheel dist/*.whl
+      - name: Publish release and assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG" --verify-tag --title "auditgym $RELEASE_TAG"
+          --notes-file docs/release-notes.md
+          dist/auditgym-release.zip dist/auditgym-release.zip.sha256
+          dist/*.whl docs/demo/participant4.cast
+      - name: Retain diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence
+          path: |
+            runs/release-check/validation.json
+            runs/release-check/acceptance.json
+            runs/release-check/junit.xml
+            runs/container-check/
+            dist/
+      - name: Remove release container
+        if: always()
+        run: docker rm -f auditgym-release || true

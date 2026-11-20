@@ -4,12 +4,30 @@ import argparse
 import hashlib
 import json
 import subprocess
+import tomllib
 import zipfile
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from auditgym import ENV_VERSION
 
 from .snapshot import digest_files, source_files
+
+STAGES = {"lint", "tests_and_acceptance", "episode_checksums", "four_baselines", "grader_selfcheck"}
+
+
+def validate_evidence(report, source_sha256, constraints=None):
+    if (report.get("status") != "passed" or report.get("env_version") != ENV_VERSION
+        or len(report.get("stages", [])) != len(STAGES)
+        or {s["name"] for s in report["stages"] if s.get("status") == "passed"
+            and s.get("exit_code") == 0} != STAGES):
+        raise ValueError("Full validation must pass for the current environment version")
+    if report.get("source_sha256") != source_sha256:
+        raise ValueError("Source changed since validation")
+    if constraints is not None and (
+        constraints.get("Memory") != 4294967296 or constraints.get("NanoCpus") != 2000000000
+        or constraints.get("NetworkMode") != "none"
+    ):
+        raise ValueError("Container constraints do not match the release contract")
 
 
 def assemble(payload, metadata, out):
@@ -57,6 +75,8 @@ def main(argv=None):
     parser.add_argument("--validation", type=Path)
     parser.add_argument("--demo", type=Path)
     parser.add_argument("--wheel", type=Path)
+    parser.add_argument("--container-validation", type=Path)
+    parser.add_argument("--release-tag")
     args = parser.parse_args(argv)
     if args.verify:
         manifest = verify(args.verify)
@@ -72,26 +92,42 @@ def main(argv=None):
         parser.error("Building a candidate requires a source checkout")
     sources = source_files(root)
     report = json.loads((args.validation / "validation.json").read_text(encoding="utf-8"))
-    expected_stages = {"lint", "tests_and_acceptance", "episode_checksums", "four_baselines",
-                       "grader_selfcheck"}
-    if (report.get("status") != "passed" or report.get("env_version") != ENV_VERSION
-        or {s["name"] for s in report["stages"] if s["status"] == "passed"} != expected_stages):
-        parser.error("Full validation report must pass for the current version")
-    if report.get("source_sha256") != digest_files(sources):
-        parser.error("Source changed since validation; run validation again")
+    source_sha256 = digest_files(sources)
+    try:
+        validate_evidence(report, source_sha256)
+    except ValueError as error:
+        parser.error(str(error))
+    if bool(args.container_validation) != bool(args.release_tag):
+        parser.error("A verified release requires both --container-validation and --release-tag")
+    if args.release_tag:
+        version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+        if args.release_tag != "v" + version:
+            parser.error("Release tag must match the package version")
+        container = json.loads((args.container_validation / "validation.json").read_text("utf-8"))
+        constraints = json.loads((args.container_validation / "constraints.json").read_text("utf-8"))
+        try:
+            validate_evidence(container, source_sha256, constraints)
+        except ValueError as error:
+            parser.error(str(error))
     payload = {"source/" + name: content for name, content in sources.items()}
     for filename in ("validation.json", "acceptance.json", "junit.xml"):
         payload["evidence/" + filename] = (args.validation / filename).read_bytes()
     payload["evidence/demo.cast"] = args.demo.read_bytes()
     payload["evidence/demo.json"] = args.demo.with_suffix(".json").read_bytes()
     payload["packages/" + args.wheel.name] = args.wheel.read_bytes()
+    if args.container_validation:
+        for filename in ("validation.json", "acceptance.json", "junit.xml", "constraints.json"):
+            payload["evidence/container/" + filename] = (
+                args.container_validation / filename).read_bytes()
     parent = (subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
               if (root / ".git").exists() else None)
     manifest = assemble(payload, {"format_version": "1.0", "env_version": ENV_VERSION,
                                   "source_sha256": report["source_sha256"],
                                   "parent_commit": parent, "working_tree_included": True,
-                                  "release_status": "candidate_unverified_container",
-                                  "container_verified": False}, args.out)
+                                  "release_status": "verified_release" if args.release_tag else
+                                                    "candidate_unverified_container",
+                                  "release_tag": args.release_tag,
+                                  "container_verified": bool(args.release_tag)}, args.out)
     with sidecar.open("x", encoding="utf-8", newline="\n") as stream:
         stream.write(hashlib.sha256(args.out.read_bytes()).hexdigest() + "  " + args.out.name + "\n")
     print(f"Candidate built and verified: {args.out} ({len(manifest['files'])} files)")
