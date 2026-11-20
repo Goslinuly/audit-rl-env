@@ -161,7 +161,12 @@ class Handler(SimpleHTTPRequestHandler):
         if urlparse(self.path).path != "/api/run":
             return self.error_json(HTTPStatus.NOT_FOUND, "unknown endpoint")
         origin = self.headers.get("Origin")
-        if origin and urlparse(origin).netloc != self.headers.get("Host"):
+        allowed_hosts = {self.headers.get("Host")}
+        codespace = os.environ.get("CODESPACE_NAME")
+        domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
+        if codespace and domain:
+            allowed_hosts.add(f"{codespace}-{self.server.server_port}.{domain}")
+        if origin and urlparse(origin).netloc not in allowed_hosts:
             return self.error_json(HTTPStatus.FORBIDDEN, "cross-origin request rejected")
         try:
             length = int(self.headers.get("Content-Length", "0"))

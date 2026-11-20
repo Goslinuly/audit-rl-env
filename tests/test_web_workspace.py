@@ -98,3 +98,19 @@ def test_run_payload_limit(web):
     with pytest.raises(HTTPError) as error:
         request(web, "/api/run", {"padding": "x" * 9000})
     assert error.value.code == 413
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_codespaces_forwarded_origin(web, monkeypatch, valid):
+    monkeypatch.setenv("CODESPACE_NAME", "auditgym-test")
+    monkeypatch.setenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
+    port = web.rsplit(":", 1)[1]
+    host = f"auditgym-test-{port}.app.github.dev" if valid else "other-space.app.github.dev"
+    body = {"source": {"split": "sample", "name": "sample_00"}, "policy": "FlagAll"}
+    if valid:
+        status, _ = request(web, "/api/run", body, {"Origin": "https://" + host})
+        assert status == 200
+    else:
+        with pytest.raises(HTTPError) as error:
+            request(web, "/api/run", body, {"Origin": "https://" + host})
+        assert error.value.code == 403
