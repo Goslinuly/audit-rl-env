@@ -34,6 +34,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install archive tooling
+        run: python -m pip install -e ".[dev]"
       - name: Build dependency-complete image
         run: docker build -t audit-rl-env .
       - name: Full check without network, 2 CPU, 4 GiB, 10 minute deadline
@@ -60,6 +65,11 @@ jobs:
           assert d["NanoCpus"] == 2000000000;
           assert d["NetworkMode"] == "none";
           print("Verified: no network, 2 CPUs, 4 GiB")'
+      - name: Exercise verified release packaging before tagging
+        run: |
+          docker inspect --format '{{json .HostConfig}}' auditgym-validation > runs/container-check/constraints.json
+          python -m pip wheel --no-deps --wheel-dir runs/container-wheel .
+          python -m auditgym.runner.bundle --out runs/container-bundle/auditgym-release.zip --validation runs/container-check --container-validation runs/container-check --release-tag v1.0.0 --demo docs/demo/participant4.cast --wheel runs/container-wheel/auditgym-1.0.0-py3-none-any.whl
       - name: Save isolated container reports
         if: always()
         uses: actions/upload-artifact@v7

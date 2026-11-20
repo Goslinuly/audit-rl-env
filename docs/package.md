@@ -6,7 +6,7 @@ JSON-схемы включены в wheel как ресурсы `auditgym.schema
 
 ```sh
 python -m pip wheel --no-deps --wheel-dir runs/release-build .
-python tools/check_wheel.py runs/release-build/auditgym-0.2.0-py3-none-any.whl
+python tools/check_wheel.py runs/release-build/auditgym-1.0.0-py3-none-any.whl
 ```
 
 Проверка устанавливает wheel во временную папку и запускает код за пределами
@@ -20,8 +20,8 @@ Oracle и реальный прогон Reconciler. Зависимости до�
 
 ```sh
 python -m auditgym.runner.validate --out runs/package-validation --deadline 600
-python -m auditgym.runner.bundle --out runs/submission/auditgym-0.2.0-candidate.zip --validation runs/package-validation --demo docs/demo/participant4.cast --wheel runs/release-build/auditgym-0.2.0-py3-none-any.whl
-python -m auditgym.runner.bundle --verify runs/submission/auditgym-0.2.0-candidate.zip
+python -m auditgym.runner.bundle --out runs/submission/auditgym-1.0.0-candidate.zip --validation runs/package-validation --demo docs/demo/participant4.cast --wheel runs/release-build/auditgym-1.0.0-py3-none-any.whl
+python -m auditgym.runner.bundle --verify runs/submission/auditgym-1.0.0-candidate.zip
 ```
 
 Отчёт проверки связан с SHA256 исходных файлов, включая незакоммиченные изменения.
@@ -40,3 +40,9 @@ manifest.json перечисляет файлы, размеры и SHA256. Ря�
 
 Метаданные честно указывают статус candidate_unverified_container. Создание пакета
 не означает релиз, успешный Docker-прогон, коммит или публикацию на GitHub.
+
+Для подтверждённого релиза workflow дополнительно передаёт --release-tag и
+--container-validation. Проверяются версия пакета, пять успешных этапов,
+совпадение хешей и constraints.json (Memory=4294967296, NanoCpus=2000000000,
+NetworkMode=none). В архив добавляются контейнерные отчёты, а статус становится
+verified_release. Автоматическая публикация разрешена только после этих проверок.
