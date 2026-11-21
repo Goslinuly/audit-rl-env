@@ -23,15 +23,15 @@
   };
   const policyNames = ["Reconciler", "Oracle", "FlagAll", "RandomExplorer"];
   const titles = {
-    overview: ["Обзор компании", "Документы и результаты проверки"],
-    companies: ["Компании", "Рабочий каталог этого браузера"],
-    episodes: ["Эпизоды", "Реальные документы генератора команды"],
+    overview: ["Обзор компании", "Обороты за месяц и найденные расхождения"],
+    companies: ["Компании", "Все компании, по которым есть данные"],
+    episodes: ["Проверки", "Каждая проверка — один месяц учёта одной компании"],
     investigation: [
-      "Расследование эпизода",
-      "Документы, доказательства и траектория агента",
+      "Документы",
+      "Счета, платежи и шаги агента",
     ],
-    comparison: ["Сравнение агентов", "Результаты AuditEnv и grader команды"],
-    reports: ["Отчёты", "Выводы агента и ручные подтверждения"],
+    comparison: ["Агенты", "Сравнение агентов на одной и той же компании"],
+    reports: ["Отчёт", "Что нашёл агент и что вы подтвердили"],
   };
   const storageKey = "auditgym.live.workspace.v1";
   let saved = {};
@@ -71,6 +71,48 @@
   const company = () => companies.find((c) => c.id === selected?.companyId);
   const companyName = (id) =>
     aliases[id] || companies.find((c) => c.id === id)?.name || "Компания";
+  const SPLITS = { sample: "пример", train: "обучающий набор", dev: "проверочный набор" };
+  const PRESET_NAMES = {
+    clean_small: "Без ошибок, небольшая",
+    clean_large: "Без ошибок, крупная",
+    mixed_small: "Разные ошибки, небольшая",
+    mixed_medium: "Разные ошибки, средняя",
+    mixed_large: "Разные ошибки, крупная",
+    interactions: "Связанные ошибки",
+    single_type: "Один тип ошибок",
+  };
+  const presetName = (p) => PRESET_NAMES[p] || p;
+  const monthName = (iso) =>
+    iso
+      ? new Date(Date.parse(iso) + 432e5).toLocaleDateString("ru-RU", {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+      : "";
+  const TYPE_HINTS = {
+    duplicate_invoice: "Счёт повторяет более ранний счёт того же клиента: та же сумма, валюта и позиции. Сумма — весь дубль.",
+    payment_allocation: "Часть платежа не зачтена в счёт клиента, хотя открытый остаток счёта ровно равен этой части.",
+    fx_conversion: "Документ пересчитан в валюту учёта не по тому курсу. Сумма — разница с пересчётом по правильному курсу.",
+    period_cutoff: "Документ проведён в этом месяце, хотя по времени компании он относится к другому.",
+  };
+  const ACTION_NAMES = {
+    list_records: "Просмотр таблицы",
+    get_record: "Открыта запись",
+    get_document: "Открыт документ",
+    calculator: "Расчёт",
+    submit: "Отправлен ответ",
+  };
+  function sourceLabel(e) {
+    if (!e) return "—";
+    if (e.source.split) return SPLITS[e.source.split] || e.source.split;
+    return presetName(e.source.preset) + ", вариант " + e.source.seed;
+  }
+  function episodeLabel(e) {
+    if (!e) return "—";
+    const month = monthName(e.period);
+    return month ? month + " · " + sourceLabel(e) : sourceLabel(e);
+  }
   const runKey = (id = selected?.id, p = agent) => id + ":" + p;
   const run = () => runs.get(runKey());
   const findings = () => run()?.findings || [];
@@ -201,7 +243,7 @@
       render();
     } catch (e) {
       if (token === viewToken) {
-        status("Не удалось загрузить эпизод: " + e.message, true);
+        status("Не удалось загрузить данные: " + e.message, true);
         render();
       }
     }
@@ -230,19 +272,21 @@
       ? "Сохранить изменения"
       : "Создать компанию";
     el("generator-form").querySelector("h2").textContent = editEpisode
-      ? "Редактирование эпизода"
-      : "Генерация эпизода";
+      ? "Изменить проверку"
+      : "Новая проверка";
     el("title").textContent = titles[page][0];
     el("subtitle").textContent = titles[page][1];
     el("company").textContent = selected
       ? companyName(selected.companyId)
-      : "Нет выбранного эпизода";
+      : "Компания не выбрана";
+    el("period-label").textContent = selected?.period
+      ? "Отчётный период: " + monthName(selected.period)
+      : "";
+    el("split-label").textContent = selected ? sourceLabel(selected) : "—";
     el("episode").innerHTML = options(
       episodes.map((e) => [
         e.id,
-        companyName(e.companyId) +
-          " · " +
-          (e.source.name || e.source.preset + " / " + e.source.seed),
+        companyName(e.companyId) + " · " + episodeLabel(e),
       ]),
       selected?.id,
     );
@@ -252,8 +296,8 @@
     el("run").textContent = busy
       ? "Выполняется…"
       : page === "comparison"
-        ? "Запустить сравнение"
-        : "Запустить " + agent;
+        ? "Сравнить агентов"
+        : "Запустить проверку";
     el("empty-state").hidden =
       !!selected || ["companies", "episodes"].includes(page);
     for (const p of ["overview", "investigation", "comparison", "reports"])
@@ -272,16 +316,16 @@
       fs = findings();
     el("metrics").innerHTML = [
       ["Документы", m.counts.documents, "Счета и платежи"],
-      ["Проводки", m.counts.ledger_rows, "Базовая валюта — " + m.base_currency],
+      ["Проводки", m.counts.ledger_rows, "Валюта учёта — " + m.base_currency],
       [
-        "Выводы агента",
+        "Найдено расхождений",
         run() ? fs.length : "—",
         run()
           ? "Подтверждено: " +
             fs.filter((_, i) => confirmations[confirmationKey(i)]).length
-          : "Запустите проверку",
+          : "Проверка не запускалась",
       ],
-      ["Заявленные суммы", totals(fs), "По валютам, без смешения единиц"],
+      ["Сумма расхождений", totals(fs), "По каждой валюте отдельно"],
     ]
       .map(
         ([l, v, n]) =>
@@ -302,6 +346,13 @@
         i = Math.floor(((time - start) / (end - start)) * 4);
       if (i >= 0 && i < 4) amounts[i] += r.debit_minor;
     }
+    const weekLabel = (i) => {
+      const day = (t) => new Date(t + 432e5).getUTCDate(),
+        a = start + ((end - start) * i) / 4,
+        b = start + ((end - start) * (i + 1)) / 4 - 864e5;
+      return day(a) + "–" + day(b) + " " +
+        new Date(a + 432e5).toLocaleDateString("ru-RU", { month: "short", timeZone: "UTC" });
+    };
     el("period").innerHTML = options(
       [
         [
@@ -322,14 +373,14 @@
           (n / Math.max(...amounts, 1)) * 90 +
           '%"><span class="ag-chart-value">' +
           esc(number(n / 10 ** m.currencies[m.base_currency].exponent / 1000)) +
-          "</span></div><small>Часть " +
-          (i + 1) +
+          "</span></div><small>" +
+          esc(weekLabel(i)) +
           "</small></div>",
       )
       .join("");
     el("chart").setAttribute(
       "aria-label",
-      "Дебетовый оборот за четыре равные части периода: " +
+      "Оборот по дебету по неделям: " +
         amounts.map((n) => money(n, m.base_currency)).join(", "),
     );
     el("chart-total").textContent =
@@ -357,8 +408,8 @@
       })
       .join("");
     el("risk-total").textContent = run()
-      ? fs.length + " выводов"
-      : "Нет запуска";
+      ? "найдено: " + fs.length
+      : "не запускалась";
     const query = el("search").value.trim().toLowerCase(),
       filter = el("filter").value;
     const visible = fs
@@ -389,11 +440,11 @@
       empty(
         4,
         run()
-          ? "Нет выводов по выбранному фильтру"
-          : "Запустите агента для поиска расхождений",
+          ? "Ничего не найдено"
+          : "Нажмите «Запустить проверку»",
       );
     el("timeline").innerHTML =
-      '<div class="ag-event"><span class="ag-event-num">1</span><div><strong>Документы загружены из API</strong><p class="ag-sub">' +
+      '<div class="ag-event"><span class="ag-event-num">1</span><div><strong>Документы загружены</strong><p class="ag-sub">' +
       esc(m.episode_id) +
       '</p></div></div><div class="ag-event"><span class="ag-event-num">2</span><div><strong>' +
       esc(run() ? "Проверка завершена" : "Ожидает запуска") +
@@ -473,8 +524,8 @@
     el("booked").textContent = f ? f.affected_ids.join(", ") : docId;
     el("expected").textContent = f ? f.currency : "—";
     el("explanation").textContent = f
-      ? f.explanation || "Вывод агента требует проверки по документам"
-      : "Выберите документ или запустите агента";
+      ? TYPE_HINTS[f.type] || f.explanation || "Сверьте с документами ниже"
+      : "Нажмите на документ в списке слева";
     const evidence = f?.evidence_ids || [];
     if (!evidence.includes(evidenceId)) evidenceId = evidence[0] || docId;
     el("evidence").innerHTML = evidence
@@ -489,18 +540,34 @@
           "</button>",
       )
       .join("");
-    el("proof-detail").textContent = JSON.stringify(
-      lookup(evidenceId) || {
-        id: evidenceId,
-        message: "Запись с этим ID не найдена в публичных документах",
-      },
-      null,
-      2,
-    );
-    el("proof-count").textContent = evidence.length + " ID";
+    const rec = lookup(evidenceId);
+    const value = (k, v) => {
+      if (v === null || v === undefined || v === "") return "—";
+      if (k === "line_items" && Array.isArray(v) && rec?.currency)
+        return v
+          .map((x) => x.description + ": " + x.quantity + " × " + money(x.unit_price_minor, rec.currency) + " = " + money(x.amount_minor, rec.currency))
+          .join("\n");
+      if (k === "invoice_refs" && Array.isArray(v) && rec?.currency)
+        return v.length ? v.map((x) => x.invoice_id + ": " + money(x.applied_minor, rec.currency)).join("\n") : "—";
+      if (Array.isArray(v))
+        return v.length
+          ? v.map((x) => (typeof x === "object" ? Object.values(x).join(" · ") : x)).join("\n")
+          : "—";
+      if (k.endsWith("_minor") && rec?.currency) return money(v, rec.currency);
+      if (/(_at|timestamp)$/.test(k)) return String(v).replace("T", " ").slice(0, 16) + " " + String(v).slice(-6);
+      return typeof v === "object" ? JSON.stringify(v) : String(v);
+    };
+    el("proof-detail").innerHTML = rec
+      ? '<dl class="ag-kv">' +
+        Object.entries(rec)
+          .map(([k, v]) => "<dt>" + esc(k) + "</dt><dd>" + esc(value(k, v)) + "</dd>")
+          .join("") +
+        "</dl>"
+      : esc(evidenceId ? "Запись " + evidenceId + " не найдена" : "");
+    el("proof-count").textContent = String(evidence.length);
     el("step-count").textContent = logs.length
       ? cursor + 1 + " / " + logs.length
-      : "Нет запуска";
+      : "—";
     const first = Math.max(0, Math.min(cursor - 1, logs.length - 4));
     el("steps").innerHTML = logs
       .slice(first, first + 4)
@@ -513,13 +580,13 @@
           '"><span class="ag-step-no">Шаг ' +
           r.step +
           "</span>" +
-          esc(r.action.name) +
+          esc(ACTION_NAMES[r.action.name] || r.action.name) +
           "</button>",
       )
       .join("");
     el("step-detail").textContent = logs.length
       ? JSON.stringify(logs[cursor], null, 2)
-      : "После запуска здесь появится реальная траектория AuditEnv";
+      : "Здесь появятся шаги агента после запуска проверки";
     el("prev").disabled = busy || cursor <= 0;
     el("next").disabled = busy || cursor >= logs.length - 1;
     el("confirm").disabled = busy || !f;
@@ -541,10 +608,12 @@
             "</span><div><h2>" +
             esc(companyName(c.id)) +
             '</h2><p class="ag-sub">' +
-            esc(c.sector || "Синтетическая компания") +
-            '</p></div></div><div class="ag-company-stats"><div><span>Эпизоды</span><b>' +
+            esc(c.sector || "Своя компания") +
+            '</p></div></div><div class="ag-company-stats"><div><span>Проверки</span><b>' +
             eps.length +
-            '</b></div><div><span>Каталог</span><b>Локальный</b></div></div><div class="ag-controls">' +
+            '</b></div><div><span>Документы</span><b>' +
+            esc(eps[0]?.counts?.documents ?? "—") +
+            '</b></div></div><div class="ag-controls">' +
             (eps[0]
               ? button(
                   "Открыть компанию",
@@ -552,7 +621,7 @@
                   true,
                 )
               : "") +
-            button("Добавить эпизод", 'data-generate="' + esc(c.id) + '"') +
+            button("Новая проверка", 'data-generate="' + esc(c.id) + '"') +
             '</div><div class="ag-controls ag-management-actions">' +
             button("Редактировать", 'data-edit-company="' + esc(c.id) + '"') +
             button("Удалить", 'data-delete-company="' + esc(c.id) + '"') +
@@ -560,7 +629,7 @@
           );
         })
         .join("") ||
-      '<p class="ag-sub">Создайте компанию, чтобы добавить эпизод</p>';
+      '<p class="ag-sub">Компаний пока нет</p>';
     el("generator-company").innerHTML = options(
       companies.map((c) => [c.id, companyName(c.id)]),
       el("generator-company").value,
@@ -589,30 +658,31 @@
             (e.id === selected?.id ? "ag-selected" : "") +
             '"><td>' +
             button(
-              e.source.name || e.source.preset,
+              companyName(e.companyId),
               'data-select-episode="' + esc(e.id) + '"',
             ) +
             '<p class="ag-sub">' +
-            esc(companyName(e.companyId)) +
+            esc(monthName(e.period) || "—") +
             '</p><div class="ag-row-actions">' +
             button("Изменить", 'data-edit-episode="' + esc(e.id) + '"') +
             button("Удалить", 'data-delete-episode="' + esc(e.id) + '"') +
             "</div></td><td>" +
             esc(e.counts?.documents ?? "—") +
             "</td><td>" +
-            esc(e.source.seed ?? e.source.split) +
+            esc(sourceLabel(e)) +
             "</td><td>" +
             esc(e.base || "—") +
             "</td><td>" +
-            esc(runs.has(e.id + ":Reconciler") ? "Выполнена" : "Нет запуска") +
+            esc(runs.has(e.id + ":Reconciler") ? "Проверена" : "Не проверялась") +
             "</td></tr>",
         )
-        .join("") || empty(5, "Эпизодов нет");
-    el("selected-episode").textContent =
-      selected?.source.name || selected?.source.preset || "—";
+        .join("") || empty(5, "Пока пусто");
+    el("selected-episode").textContent = selected ? episodeLabel(selected) : "—";
     el("episode-detail").textContent = selected
-      ? JSON.stringify(selected.source)
-      : "Выберите эпизод";
+      ? companyName(selected.companyId) +
+        " · документов: " + (selected.counts?.documents ?? "—") +
+        " · валюта учёта: " + (selected.base || "—")
+      : "Нажмите на компанию в списке";
     el("episode-open").disabled = !selected;
   }
   function renderComparison() {
@@ -667,15 +737,15 @@
       .join("");
     el("agent-name").textContent = agent;
     el("compare-label").textContent = currentOnly
-      ? "Выбранный эпизод"
-      : "Выполненные прогоны";
+      ? "Текущая компания"
+      : "Все запуски";
     el("agent-description").textContent =
       agent === "Oracle"
         ? "Привилегированный эталон: получает скрытый ответ. Это верхняя граница качества."
-        : "Политика работает с публичными наблюдениями AuditEnv";
+        : "Видит только документы и проводки, как обычный аудитор";
     el("agent-summary").textContent =
-      "Сначала запустите сравнение для выбранного эпизода. Средние учитывают только выполненные прогоны.";
-    el("agent-limits").textContent = "Лимит — 100 шагов · seed политики — 42";
+      "Нажмите «Сравнить агентов». В средних учитываются только запущенные проверки.";
+    el("agent-limits").textContent = "Не больше 100 шагов на компанию";
   }
   function report() {
     const fs = findings()
@@ -705,15 +775,15 @@
       ? "Проверка выполнена"
       : "Агент не запущен";
     el("report-summary").innerHTML =
-      '<div><span class="ag-stat-label">Выводы в отчёте</span><b>' +
+      '<div><span class="ag-stat-label">Расхождений в отчёте</span><b>' +
       r.findings.length +
-      '</b></div><div><span class="ag-stat-label">F1 grader</span><b>' +
+      '</b></div><div><span class="ag-stat-label">F1</span><b>' +
       (r.metrics ? number(r.metrics.f1) : "—") +
       '</b></div><div><span class="ag-stat-label">Награда</span><b>' +
       (r.metrics ? number(r.metrics.reward) : "—") +
       "</b></div>";
     el("report-progress").textContent =
-      "Ручные подтверждения сохраняются в браузере и не меняют метрики grader";
+      "Отметки «подтверждено» хранятся только в этом браузере и на оценку не влияют";
     el("report-findings").innerHTML =
       r.findings
         .map(
@@ -730,7 +800,7 @@
             esc(f.manually_confirmed ? "Подтверждён" : "К проверке") +
             "</td></tr>",
         )
-        .join("") || empty(4, "Нет выводов в выбранном отчёте");
+        .join("") || empty(4, "Отчёт пуст");
     el("report-preview").textContent = reportText(r);
     el("report-filename").textContent = filename();
     el("report-download").disabled = !run();
@@ -740,8 +810,8 @@
       r.company,
       r.episode_id,
       "Политика: " + r.policy,
-      "Метрики grader: " + JSON.stringify(r.metrics),
-      "Ручное подтверждение не является оценкой grader",
+      "Оценка: " + JSON.stringify(r.metrics),
+      "Отметки «подтверждено» поставлены вручную и на оценку не влияют",
       ...r.findings.map(
         (f) =>
           names[f.type] +
@@ -771,7 +841,7 @@
     busy = true;
     const ep = selected;
     render();
-    status("Выполняется реальный прогон AuditEnv…");
+    status("Агент проверяет документы…");
     try {
       for (const p of compare ? policyNames : [agent]) {
         const result = await api("/api/run", {
@@ -786,7 +856,7 @@
         findingIndex = 0;
         if (!compare) page = "investigation";
       }
-      status("Проверка завершена. Метрики рассчитаны grader команды");
+      status("Проверка завершена");
     } catch (e) {
       status("Ошибка запуска: " + e.message, true);
     } finally {
@@ -798,15 +868,26 @@
     deletion = { kind, id };
     el("delete-title").textContent =
       "Удалить " +
-      (kind === "company" ? "компанию" : "эпизод") +
-      " из каталога?";
+      (kind === "company" ? "компанию" : "проверку") +
+      " из списка?";
     el("delete-description").textContent =
-      "Удаление относится к рабочему каталогу этого браузера";
+      "Удаляется только из списка в этом браузере";
     el("delete-impact").textContent =
       kind === "company"
-        ? "Её эпизоды и локальные подтверждения будут удалены из каталога. Опубликованные данные команды сохранятся."
-        : "Опубликованный исходник команды не изменится";
+        ? "Вместе с ней из списка уйдут её проверки и ваши отметки. Данные на сервере останутся."
+        : "Данные на сервере останутся";
     el("delete-dialog").showModal();
+  }
+  function presetDescription(p) {
+    return {
+      clean_small: "Компания без ошибок. Правильный ответ — ничего не найдено.",
+      clean_large: "Крупная компания без ошибок.",
+      mixed_small: "Несколько ошибок разных типов на небольшом объёме документов.",
+      mixed_medium: "Ошибки всех четырёх типов, средний объём документов.",
+      mixed_large: "Ошибки всех типов и до 2000 проводок.",
+      interactions: "Ошибки, которые накладываются друг на друга в одном платеже.",
+      single_type: "Ошибки только одного типа.",
+    }[p] || presetName(p);
   }
   function openGenerator(owner, episode = null) {
     editEpisode = episode;
@@ -816,8 +897,7 @@
     el("generator-preset").value = episode?.source.preset || presets[0];
     el("generator-seed").value = episode?.source.seed ?? 42;
     el("generator-error").textContent = "";
-    el("preset-description").textContent =
-      "Пресет командного генератора: " + el("generator-preset").value;
+    el("preset-description").textContent = presetDescription(el("generator-preset").value);
   }
   root.addEventListener("click", (event) => {
     const b = event.target.closest("button");
@@ -992,8 +1072,7 @@
   el("new-episode").onclick = () => openGenerator();
   el("generator-cancel").onclick = () => (el("generator-form").hidden = true);
   el("generator-preset").onchange = () =>
-    (el("preset-description").textContent =
-      "Пресет командного генератора: " + el("generator-preset").value);
+    (el("preset-description").textContent = presetDescription(el("generator-preset").value));
   el("generator-form").onsubmit = async (e) => {
     e.preventDefault();
     const raw = el("generator-seed").value,
@@ -1024,7 +1103,7 @@
           ep.source.seed === seed &&
           ep.id !== editEpisode?.id,
       );
-      if (duplicate) throw Error("Эпизод с этими параметрами уже есть");
+      if (duplicate) throw Error("Такая проверка уже есть");
       const ep = {
         id: "generated-" + crypto.randomUUID(),
         companyId: owner,
@@ -1044,7 +1123,7 @@
       save();
       el("generator-form").hidden = true;
       el("generated-result").hidden = false;
-      el("generated-title").textContent = "Эпизод создан генератором команды";
+      el("generated-title").textContent = "Готово";
       el("generated-description").textContent = preset + " · seed " + seed;
       el("generated-open").onclick = () => choose(ep.id, "investigation");
       await choose(ep.id, "episodes");
@@ -1082,7 +1161,7 @@
   };
   async function init() {
     render();
-    status("Подключаемся к API команды…");
+    status("Подключение…");
     try {
       const [index, config] = await Promise.all([
         api("/api/episodes"),
@@ -1090,7 +1169,7 @@
       ]);
       presets = config.presets;
       el("generator-preset").innerHTML = options(
-        presets.map((p) => [p, p]),
+        presets.map((p) => [p, presetName(p)]),
         "mixed_small",
       );
       episodes = index.episodes
@@ -1109,23 +1188,25 @@
           !companies.some((c) => c.id === id) &&
           !hidden.includes(ep.split + "/" + ep.name)
         )
-          companies.push({
-            id,
-            name: ep.company_name,
-            sector: "Командный эпизод · " + ep.split,
-          });
+          companies.push({ id, name: ep.company_name, sector: "" });
+        const known = companies.find((c) => c.id === id);
+        if (known) {
+          known.name = ep.company_name;
+          known.sector =
+            monthName(ep.period_start) + " · " + (SPLITS[ep.split] || ep.split);
+        }
       }
       episodes.push(
         ...generated.filter((e) => companies.some((c) => c.id === e.companyId)),
       );
       save();
       await choose(episodes[0]?.id);
-      status("API подключён · " + episodes.length + " эпизодов");
+      status("Данные загружены · компаний: " + episodes.length);
     } catch (e) {
       status(
-        "API недоступен: " +
+        "Сервер недоступен: " +
           e.message +
-          ". Обновите страницу для повторного подключения.",
+          ". Обновите страницу.",
         true,
       );
     }

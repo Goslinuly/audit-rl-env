@@ -25,14 +25,14 @@ const fs = require("node:fs"),
     await p.waitForFunction(() =>
       document
         .querySelector("#ag-status")
-        .textContent.includes("API подключён"),
+        .textContent.includes("Данные загружены"),
     );
     ok(
       "real API data",
       await p
         .locator("#ag-company")
         .textContent()
-        .then((t) => t === "Versen Systems"),
+        .then((t) => t === "Zhetysu Consulting Ltd"),
     );
     ok(
       "no external white border",
@@ -262,7 +262,7 @@ const fs = require("node:fs"),
     await p.waitForFunction(() =>
       document
         .querySelector("#ag-status")
-        .textContent.includes("API подключён"),
+        .textContent.includes("Данные загружены"),
     );
     await p.locator(".ag-navigation [data-page=companies]").click();
     ok(

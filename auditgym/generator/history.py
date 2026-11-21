@@ -37,6 +37,24 @@ PRODUCTS = (
 )
 SYLLABLES = ("nor", "tal", "ver", "ka", "dun", "ilo", "mar", "sen", "qua", "bri", "zel", "oru", "fen")
 SUFFIXES = ("LLP", "Ltd", "Group", "Trading", "Systems", "Holdings")
+# The syllable/suffix draws above only pick a name from these lists, so the random stream (and
+# every other byte of an episode) does not depend on how names look.
+NAME_ROOTS = (
+    "Alatau", "Esil", "Irtysh", "Zhetysu", "Saryarka", "Turan", "Aksu", "Tengri", "Arman", "Bereke",
+    "Kokshe", "Dala", "Caspian", "Nomad", "Steppe", "Altyn", "Kaskelen", "Ulytau", "Shalkar", "Tobol",
+    "Ertis", "Karatau", "Medeu", "Borovoe", "Talas", "Aral", "Sayram", "Zhaiyk", "Kerey", "Ilek",
+)
+NAME_TRADES = ("Trade", "Logistics", "Engineering", "Consulting", "Distribution", "Tech", "Service", "Supply")
+NAME_FORMS = ("LLP", "LLP", "JSC", "LLP", "Ltd", "LLP")
+
+
+def company_name(syllables: list[str], suffix: str) -> str:
+    code = 0
+    for s in syllables:
+        code = code * len(SYLLABLES) + SYLLABLES.index(s)
+    root = NAME_ROOTS[code % len(NAME_ROOTS)]
+    trade = NAME_TRADES[(code // len(NAME_ROOTS) + len(syllables)) % len(NAME_TRADES)]
+    return f"{root} {trade} {NAME_FORMS[SUFFIXES.index(suffix)]}"
 BG_EXPENSES = (
     "expense:rent",
     "expense:utilities",
@@ -115,8 +133,8 @@ class Builder:
             (self.start - timedelta(days=45)).date(),
             (self.end + timedelta(days=8)).date(),
         )
-        name = "".join(rng.choice(SYLLABLES) for _ in range(rng.randint(2, 3))).capitalize()
-        self.company_name = f"{name} {rng.choice(SUFFIXES)}"
+        syllables = [rng.choice(SYLLABLES) for _ in range(rng.randint(2, 3))]
+        self.company_name = company_name(syllables, rng.choice(SUFFIXES))
         n_entities = max(4, cfg["n_documents"] // 5)
         self.entities = [self.ids.new("entity") for _ in range(n_entities)]
 
