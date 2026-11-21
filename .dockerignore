@@ -11,3 +11,5 @@ build
 out
 .mypy_cache
 episodes/private_*/
+.lock-venv
+artifacts/.run

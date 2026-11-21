@@ -15,3 +15,5 @@ runs/
 # закрытые сиды/эпизоды для самопроверки — не коммитим
 episodes/private_*/
 .claude/
+artifacts/.run/
+.lock-venv/
