@@ -13,15 +13,28 @@ A *backend* builds or loads the episode, hands the environment only the public p
 Grader contract (see :mod:`auditgym.env.stub_grader`)::
 
     grader.score(findings, *, truth, public, inspection_steps) -> dict | dataclass
+
+Diagnostics. A grade may carry details derived from the reference answer (``matches``,
+``missed_issue_ids``, ``finding_reasons``, ``by_type``, validation ``errors``...). With
+``redact=True`` (``mode="eval"``) the backend returns only the scalar summary
+(:data:`SUMMARY_KEYS` plus an ``error`` code, see :func:`summarize`); the full grade is
+written — on the grader side, i.e. inside the worker process for :class:`ProcessBackend` —
+as one JSON line to ``log_path`` if one is configured, and is otherwise dropped.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import json
 import multiprocessing as mp
 from pathlib import Path
 
 REPLY_TIMEOUT_S = 60.0
+
+SUMMARY_KEYS = ("reward", "precision", "recall", "f1", "tp", "fp", "fn", "valid",
+                "n_findings", "inspection_steps", "grader_version")
+"""Grade fields that may reach the environment's process in ``eval``: scalars about the
+agent's own submission, nothing that names or locates an issue of the reference answer."""
 
 
 def default_grader():
@@ -71,12 +84,44 @@ def run_grader(grader, findings, private: dict, public: dict, inspection_steps: 
         return {"reward": -1.0, "errors": [f"grader_exception: {type(exc).__name__}"]}
 
 
+def summarize(grade: dict) -> dict:
+    """Scalar-only view of a grade: :data:`SUMMARY_KEYS` plus ``error`` — ``None``,
+    ``"invalid_submission"`` or ``"grader_exception"`` (a code, never the messages)."""
+    out = {k: grade[k] for k in SUMMARY_KEYS if k in grade}
+    errors = grade.get("errors") or []
+    if any(str(e).startswith("grader_exception") for e in errors):
+        out["error"] = "grader_exception"
+    elif errors or grade.get("valid") is False:
+        out["error"] = "invalid_submission"
+    else:
+        out["error"] = None
+    return out
+
+
+def write_diagnostics(log_path, record: dict) -> None:
+    """Append one JSON line with the full grade. A logging failure never breaks grading."""
+    try:
+        with open(log_path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+    except OSError:
+        pass
+
+
+def finish_grade(grade: dict, context: dict | None, *, redact: bool, log_path) -> dict:
+    """Log the full grade (if configured) and return what the environment may keep."""
+    if log_path:
+        write_diagnostics(log_path, {**(context or {}), **grade})
+    return summarize(grade) if redact else grade
+
+
 class InlineBackend:
     """Private data in a separate object of the same process."""
 
-    def __init__(self, grader_factory=None):
+    def __init__(self, grader_factory=None, *, redact: bool = False, log_path=None):
         factory = grader_factory or default_grader()
         self._grader = factory()
+        self._redact = redact
+        self._log_path = log_path
         self._public: dict | None = None
         self.__private: dict | None = None  # name-mangled: not a plain attribute of the env
 
@@ -85,17 +130,20 @@ class InlineBackend:
         self._public, self.__private = public, private
         return public, meta
 
-    def score(self, findings, inspection_steps: int) -> dict:
+    def score(self, findings, inspection_steps: int, context: dict | None = None) -> dict:
         if self.__private is None or self._public is None:
             raise RuntimeError("no episode loaded")
-        return run_grader(self._grader, findings, self.__private, self._public, inspection_steps)
+        grade = run_grader(self._grader, findings, self.__private, self._public, inspection_steps)
+        return finish_grade(grade, context, redact=self._redact, log_path=self._log_path)
 
     def close(self) -> None:
         self._public = self.__private = None
 
 
-def _worker(conn, grader_factory) -> None:
-    """Owns the private part of the current episode; answers start/score/close."""
+def _worker(conn, grader_factory, redact: bool = False, log_path=None) -> None:
+    """Owns the private part of the current episode; answers start/score/close.
+
+    Full diagnostics stay here: with ``redact`` only :func:`summarize` crosses the pipe."""
     factory = grader_factory or default_grader()
     grader = factory()
     public = private = None
@@ -117,11 +165,13 @@ def _worker(conn, grader_factory) -> None:
                 # Only the exception type crosses the boundary: messages may mention the seed.
                 conn.send(("error", type(exc).__name__))
         elif cmd == "score":
-            _, findings, steps = msg
+            _, findings, steps, context = msg
             if private is None:
                 conn.send(("error", "no episode loaded"))
             else:
-                conn.send(("ok", run_grader(grader, findings, private, public, steps)))
+                grade = run_grader(grader, findings, private, public, steps)
+                conn.send(("ok", finish_grade(grade, context, redact=redact,
+                                              log_path=log_path)))
         else:
             conn.send(("error", "unknown command"))
 
@@ -129,10 +179,12 @@ def _worker(conn, grader_factory) -> None:
 class ProcessBackend:
     """Episode generation and grading in a separate process (spawned, not forked)."""
 
-    def __init__(self, grader_factory=None):
+    def __init__(self, grader_factory=None, *, redact: bool = False, log_path=None):
         ctx = mp.get_context("spawn")
         self._conn, child = ctx.Pipe()
-        self._proc = ctx.Process(target=_worker, args=(child, grader_factory), daemon=True)
+        log_path = str(log_path) if log_path else None
+        self._proc = ctx.Process(target=_worker, args=(child, grader_factory, redact, log_path),
+                                 daemon=True)
         self._proc.start()
         child.close()
 
@@ -154,8 +206,8 @@ class ProcessBackend:
         public, meta = self._call("start", seed, config, episode_dir)
         return public, meta
 
-    def score(self, findings, inspection_steps: int) -> dict:
-        (result,) = self._call("score", findings, inspection_steps)
+    def score(self, findings, inspection_steps: int, context: dict | None = None) -> dict:
+        (result,) = self._call("score", findings, inspection_steps, context)
         return result
 
     def close(self) -> None:

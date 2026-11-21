@@ -14,9 +14,12 @@ Step rules (ТЗ, участник 2):
 * every action — valid, invalid or ``submit`` — costs one step; at most ``max_steps``;
 * exploration reward is 0; ``submit`` ends the episode (``terminated=True``); in ``train``
   the reward is the grader's terminal reward, in ``eval`` it is 0 and the grade goes only
-  to :attr:`AuditEnv.grade_log`;
+  to :attr:`AuditEnv.grade_log` — in ``eval`` as scalar metrics only; the full grader
+  diagnostics are written by the grader process to ``grader_log_path`` (if set);
 * running out of steps or wall-clock time gives ``truncated=True`` and is graded as an
-  empty answer (``findings: []``);
+  empty answer (``findings: []``); the wall-clock limit is checked at step boundaries, so
+  the first ``step`` (including a ``submit``) after the deadline truncates and discards
+  that action;
 * a step after the end returns an ``episode_over`` error and changes nothing; a second
   ``submit`` is never re-graded.
 """
@@ -24,6 +27,7 @@ Step rules (ТЗ, участник 2):
 from __future__ import annotations
 
 import json
+import os
 import time
 
 from auditgym import ENV_VERSION
@@ -34,6 +38,7 @@ from .grading import InlineBackend, ProcessBackend
 from .store import MAX_PAGE, TABLES, PublicStore
 
 MODES = ("train", "eval")
+GRADER_LOG_ENV = "AUDITGYM_GRADER_LOG"
 MAX_ACTION_BYTES = 64 * 1024
 
 TASK = (
@@ -120,6 +125,7 @@ class AuditEnv:
         isolation: str | None = None,
         clock=time.monotonic,
         max_action_bytes: int = MAX_ACTION_BYTES,
+        grader_log_path=None,
     ):
         """
         mode: ``"train"`` (terminal reward returned to the agent) or ``"eval"`` (reward 0).
@@ -127,6 +133,10 @@ class AuditEnv:
             ``auditgym.grader.Grader`` if present, else the temporary stub.
         isolation: ``"process"`` or ``"inline"``; default ``"process"`` in eval, ``"inline"``
             in train.
+        grader_log_path: file to which the grader side appends one JSON line with the full
+            grade (matches, missed issue ids, reasons...) per graded episode; default — the
+            ``AUDITGYM_GRADER_LOG`` environment variable, else no log. In ``eval`` this file
+            is the only place the diagnostics go: :attr:`grade_log` keeps scalars only.
         """
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}")
@@ -142,11 +152,17 @@ class AuditEnv:
         self.isolation = isolation
         self.max_action_bytes = max_action_bytes
         self._clock = clock
+        if grader_log_path is None:
+            grader_log_path = os.environ.get(GRADER_LOG_ENV) or None
+        self.grader_log_path = str(grader_log_path) if grader_log_path else None
         backend_cls = ProcessBackend if isolation == "process" else InlineBackend
-        self._backend = backend_cls(grader)
+        self._backend = backend_cls(grader, redact=mode == "eval",
+                                    log_path=self.grader_log_path)
         self._state: _State | None = None
         self.grade_log: list[dict] = []
-        """Grader results for the runner/diagnostics. Never part of observations or info."""
+        """Grader results for the runner. Never part of observations or info. In ``train``
+        the full grade; in ``eval`` only ``episode_id, mode, reason, steps`` and the scalars
+        of :data:`~auditgym.env.grading.SUMMARY_KEYS` plus an ``error`` code."""
 
     # --- lifecycle ----------------------------------------------------------------------
     def reset(self, seed: int | None = None, config: dict | None = None, *,
@@ -292,15 +308,15 @@ class AuditEnv:
         raise E.ActionError(E.UNKNOWN_ACTION, "unknown action; see the actions list")
 
     def _grade(self, st: _State, findings, inspection_steps: int, reason: str) -> float:
-        grade = self._backend.score(findings, inspection_steps)
-        self.grade_log.append({
+        head = {
             "episode_id": st.meta["episode_id"],
             "mode": self.mode,
             "reason": reason,
             "steps": st.steps,
             "inspection_steps": inspection_steps,
-            **grade,
-        })
+        }
+        grade = self._backend.score(findings, inspection_steps, head)
+        self.grade_log.append({**head, **grade})
         return float(grade["reward"]) if self.mode == "train" else 0.0
 
     def _submit(self, st: _State, submission: dict):
