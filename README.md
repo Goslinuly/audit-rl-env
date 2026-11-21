@@ -88,7 +88,8 @@ GitHub показывает исходники, но не выполняет Pyt
 
 HTTP-тесты входят в `make check`; отдельный job `web-ui` проверяет все страницы
 в браузере. Локальный запуск браузерного набора описан в [docs/web-ui.md](docs/web-ui.md).
-Конфигурация Railway сохранена, но публикация в Railway в этом изменении не выполняется.
+Опубликованная версия: https://explorer-production-573177ce.up.railway.app
+(деплой вручную: `railway up --service explorer`).
 
 ## Структура
 
