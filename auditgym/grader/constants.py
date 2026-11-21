@@ -5,7 +5,7 @@ Changing any value changes rewards, so bump :data:`GRADER_VERSION` and note it i
 
 from __future__ import annotations
 
-GRADER_VERSION = "1.0.0"
+GRADER_VERSION = "1.1.0"
 SCHEMA_VERSION = "1.0"
 
 ISSUE_TYPES: tuple[str, ...] = (

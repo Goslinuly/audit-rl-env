@@ -111,9 +111,9 @@ def test_R06_guessed_or_nonexistent_ids_are_false_positives(name):
         junk_evidence = copy.deepcopy(f)  # full valid evidence + one invented ID
         junk_evidence["evidence_ids"] = (f["evidence_ids"] + ["ledger:LDOESNOTEXIST"])[:10]
         variants.append(junk_evidence)
-        bare = copy.deepcopy(f)  # no "<table>:" prefix → no guessing
-        bare["affected_ids"] = [x.partition(":")[2] for x in f["affected_ids"]]
-        variants.append(bare)
+        bare_fake = copy.deepcopy(f)  # bare IDs resolve only when they exist → no guessing
+        bare_fake["affected_ids"] = [x.partition(":")[2] + "Q" for x in f["affected_ids"]]
+        variants.append(bare_fake)
         path = copy.deepcopy(f)
         path["evidence_ids"] = ["../private/truth.json"]
         variants.append(path)
@@ -211,11 +211,12 @@ def _invalid_structures(name: str) -> list:
         dict(f, claimed_amount_minor=True),
         dict(f, claimed_amount_minor=None),
         dict(f, claimed_amount_minor=10**19),
-        dict(f, currency="XXX"),
+        dict(f, currency="US"),
         dict(f, currency="dollars"),
+        dict(f, currency=""),
         dict(f, currency=840),
         dict(f, explanation=["not", "text"]),
-        dict(f, severity="high"),
+        dict(f, explanation=None),
         "not an object",
     ]
     return [

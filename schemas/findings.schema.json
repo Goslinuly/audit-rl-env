@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://auditgym.local/schemas/findings.schema.json",
   "title": "findings.json (argument of submit)",
-  "description": "Agent answer. Any violation => reward -1. Also checked by the grader: episode_id equals the episode, currency (trim + upper) is one of manifest.currencies. schema_version 1.0.",
+  "description": "Agent answer. Any violation => reward -1. Also checked by the grader: episode_id equals the episode. The top level is strict; unknown keys inside a finding are ignored. A well-formed currency code not used in the episode is valid but never matches (false positive). Grader 1.1.0, schema_version 1.0.",
   "schema_version": "1.0",
   "type": "object",
   "required": [
@@ -28,7 +28,8 @@
   "$defs": {
     "finding": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
+      "description": "Unknown extra keys (e.g. confidence) are allowed and ignored by the grader.",
       "required": [
         "type",
         "affected_ids",

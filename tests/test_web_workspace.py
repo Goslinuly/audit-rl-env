@@ -52,7 +52,7 @@ def test_native_policy_http(web, policy):
     result = json.loads(content)
     assert result["metrics"]["policy"] == policy
     assert result["metrics"]["scored"] is True
-    assert result["metrics"]["grader_version"] == "1.0.0"
+    assert result["metrics"]["grader_version"] == "1.1.0"
     assert 1 <= result["metrics"]["steps"] <= 100
     assert len(result["findings"]) <= 30
     assert len(result["trajectory"]) == result["metrics"]["steps"]
