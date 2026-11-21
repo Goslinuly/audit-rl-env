@@ -13,6 +13,8 @@ gives byte-identical files.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,7 +26,7 @@ from .io import load_private, load_public, public_files, write_episode
 from .render import SCHEMA_VERSION, build_doc_entries, render
 from .verify import check_clean, verify_episode
 
-GENERATOR_VERSION = "0.1.1"
+GENERATOR_VERSION = "0.2.0"
 MAX_ATTEMPTS = 25
 
 __all__ = [
@@ -65,18 +67,28 @@ class Episode:
         return public_files(self.public)
 
 
-def episode_id_for(seed: int) -> str:
-    rng = random.Random(f"auditgym:episode-id:{seed}")
-    return "ep-" + "".join(rng.choice("0123456789abcdef") for _ in range(12))
+PENDING_ID = "ep-000000000000"
+
+
+def content_episode_id(public: dict) -> str:
+    """Episode ID derived from the published records only.
+
+    It carries no information beyond what the agent already sees, so it cannot be inverted to the
+    seed (an ID computed from the seed alone could be brute-forced in milliseconds).
+    """
+    body = dict(public)
+    body["manifest"] = {k: v for k, v in public["manifest"].items() if k != "episode_id"}
+    digest = hashlib.sha256(json.dumps(body, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    return "ep-" + digest[:12]
 
 
 def _strip_rows(rows: list[dict]) -> list[dict]:
     return [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows]
 
 
-def _generate_once(seed: int, cfg: dict, episode_id: str, attempt: int) -> Episode:
+def _generate_once(seed: int, cfg: dict, attempt: int) -> Episode:
     rng = random.Random(f"auditgym:{seed}:{attempt}")
-    b = Builder(cfg, rng, episode_id)
+    b = Builder(cfg, rng, PENDING_ID)
     b.build_documents()
     clean = b.snapshot()
     ctx = inject_all(b)
@@ -91,6 +103,8 @@ def _generate_once(seed: int, cfg: dict, episode_id: str, attempt: int) -> Episo
         raise RetryGeneration("clean history: " + "; ".join(problems[:3]))
 
     public, index = render(b, random.Random(f"auditgym:{seed}:{attempt}:render"))
+    episode_id = content_episode_id(public)
+    public["manifest"]["episode_id"] = episode_id
 
     def resolve(ref: str) -> str:
         if ref.startswith("@main:"):
@@ -156,11 +170,10 @@ def generate(seed: int, config: dict | None = None) -> Episode:
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise TypeError("seed must be an int")
     cfg = resolve_config(config)
-    episode_id = episode_id_for(seed)
     reasons = []
     for attempt in range(MAX_ATTEMPTS):
         try:
-            return _generate_once(seed, cfg, episode_id, attempt)
+            return _generate_once(seed, cfg, attempt)
         except RetryGeneration as exc:
             reasons.append(str(exc))
     raise GenerationError(f"seed {seed}: no valid episode after {MAX_ATTEMPTS} attempts: {reasons[-3:]}")

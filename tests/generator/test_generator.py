@@ -181,3 +181,18 @@ def test_single_currency_config_works():
 def test_bad_seed_type():
     with pytest.raises(TypeError):
         generate("7")
+
+
+def test_episode_id_is_derived_from_public_records_not_seed():
+    import random as _random
+
+    from auditgym.generator import content_episode_id
+
+    ep = generate(2004, {"n_documents": 40, "n_ledger_rows": 300})
+    assert ep.episode_id == content_episode_id(ep.public)
+    # The former scheme (ID from the seed alone) must not reproduce the published ID.
+    rng = _random.Random("auditgym:episode-id:2004")
+    old = "ep-" + "".join(rng.choice("0123456789abcdef") for _ in range(12))
+    assert ep.episode_id != old
+    assert ep.private["truth"]["episode_id"] == ep.episode_id
+    assert ep.private["provenance"]["episode_id"] == ep.episode_id
