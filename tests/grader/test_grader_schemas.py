@@ -68,8 +68,9 @@ def test_trajectory_line_schema_rejects_leaks():
 def test_findings_schema_and_validator_agree():
     """Same accept/reject decision on a corpus of valid, mutated and malformed submissions.
 
-    The validator additionally checks two things a static schema cannot know: the episode's
-    id and the manifest's currencies. The corpus keeps both consistent so the decisions match.
+    The validator additionally checks one thing a static schema cannot know: the episode's id.
+    The corpus keeps it consistent so the decisions match. Unknown keys inside a finding and a
+    well-formed currency not used in the episode are valid for both (they only fail to match).
     """
     rng = random.Random(7)
     public, truth = episode("sample_00")
@@ -94,15 +95,17 @@ def test_findings_schema_and_validator_agree():
         {"episode_id": eid, "findings": [dict(f, type="other")]},
         {"episode_id": eid, "findings": [dict(f, evidence_ids=["   "])]},
         {"episode_id": eid, "findings": [dict(f, currency=" usd ")]},
+        {"episode_id": eid, "findings": [dict(f, currency="XXX")]},
+        {"episode_id": eid, "findings": [dict(f, currency="US")]},
+        {"episode_id": eid, "findings": [dict(f, confidence=0.9, severity="high")]},
         {"episode_id": eid, "findings": [], "schema_version": "1.0"},
         {"episode_id": eid, "findings": [], "note": "x"},
     ]
-    currencies = set(public["manifest"]["currencies"])
     v = validator("findings")
     # The one documented difference: JSON Schema treats 1.0 as an integer, the grader does not.
     float_sub = {"episode_id": eid, "findings": [dict(f, claimed_amount_minor=1.0)]}
     assert v.is_valid(float_sub)
-    assert validate_findings(float_sub, episode_id=eid, currencies=currencies)
+    assert validate_findings(float_sub, episode_id=eid)
     def has_float_amount(sub) -> bool:  # `!=` would also drop True (True == 1.0)
         items = sub.get("findings") if isinstance(sub, dict) else None
         return isinstance(items, list) and any(
@@ -110,7 +113,7 @@ def test_findings_schema_and_validator_agree():
 
     corpus = [s for s in corpus if not has_float_amount(s)]
     for sub in corpus:
-        ok_validator = not validate_findings(sub, episode_id=eid, currencies=currencies)
+        ok_validator = not validate_findings(sub, episode_id=eid)
         ok_schema = v.is_valid(sub)
         assert ok_validator == ok_schema, sub
 

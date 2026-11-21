@@ -22,7 +22,7 @@ def test_normalize_ref_rules():
     assert normalize_ref("  Ledger:L0042 ") == "ledger:L0042"
     assert normalize_ref("INVOICES : INV-7Q2K") == "invoices:INV-7Q2K"
     assert normalize_ref("fx:2026-03-31/usd/kzt") == "fx:2026-03-31/USD/KZT"
-    assert normalize_ref("L0042") == "L0042"  # no prefix → left alone, never guessed
+    assert normalize_ref("L0042") == "L0042"  # no prefix and no episode index → left alone
     assert normalize_ref("ledger:l0042") == "ledger:l0042"  # IDs stay case-sensitive
 
 

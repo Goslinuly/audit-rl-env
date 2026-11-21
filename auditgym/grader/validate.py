@@ -9,12 +9,16 @@ Rules
 * top level: object with ``episode_id`` (must equal the episode's id) and ``findings`` (list);
   optional ``schema_version`` (string); no other keys;
 * at most 30 findings;
-* each finding is an object with exactly these keys (``explanation`` optional):
+* each finding is an object with these keys (``explanation`` optional); unknown extra keys
+  inside a finding (e.g. ``confidence``) are ignored — never read, never an error — so one
+  harmless extra field cannot turn the whole answer into -1. The top level stays strict;
   ``type`` — one of the four issue types (exact string);
   ``affected_ids`` — 1..10 non-empty strings of at most 128 characters;
   ``claimed_amount_minor`` — integer (``bool`` and ``float`` are rejected, even ``100.0``),
   absolute value at most 10^18;
-  ``currency`` — string; after trim + upper-case it must be a currency of the manifest;
+  ``currency`` — string; after trim + upper-case it must look like an ISO-4217 code (three
+  letters). A well-formed code that is not used in the episode is *not* a structural error:
+  the finding is valid and simply cannot match (false positive, reason ``currency``);
   ``evidence_ids`` — 0..10 non-empty strings of at most 128 characters;
   ``explanation`` — string of at most 1000 characters.
 """
@@ -35,7 +39,6 @@ from .constants import (
 
 _TOP_KEYS = {"episode_id", "findings", "schema_version"}
 _REQUIRED = ("type", "affected_ids", "claimed_amount_minor", "currency", "evidence_ids")
-_FINDING_KEYS = set(_REQUIRED) | {"explanation"}
 _ISO4217 = re.compile(r"^[A-Z]{3}$")
 MAX_ERRORS = 20
 
@@ -59,12 +62,9 @@ def _check_ids(value, field: str, n: int, *, min_items: int, max_items: int) -> 
     return []
 
 
-def validate_findings(
-    findings, *, episode_id: str | None, currencies: set[str] | None
-) -> list[str]:
+def validate_findings(findings, *, episode_id: str | None) -> list[str]:
     """Return a list of human-readable errors; empty list means the submission is valid.
 
-    ``currencies`` — currency codes of the manifest; ``None`` accepts any ISO-4217-shaped code.
     ``episode_id`` — expected episode id; ``None`` skips the check (unit tests only).
     """
     if not isinstance(findings, dict):
@@ -100,9 +100,6 @@ def validate_findings(
         if missing:
             errors.append(f"finding {n}: missing " + ", ".join(missing))
             continue
-        extra = set(f) - _FINDING_KEYS
-        if extra:
-            errors.append(f"finding {n}: unexpected keys " + ", ".join(sorted(map(str, extra))))
         if f["type"] not in ISSUE_TYPES:
             errors.append(f"finding {n}: unknown type")
         errors += _check_ids(f["affected_ids"], "affected_ids", n,
@@ -121,8 +118,6 @@ def validate_findings(
             code = cur.strip().upper()
             if not _ISO4217.match(code):
                 errors.append(f"finding {n}: currency must be an ISO-4217 code")
-            elif currencies is not None and code not in currencies:
-                errors.append(f"finding {n}: currency is not used in this episode")
         if "explanation" in f:
             expl = f["explanation"]
             if not isinstance(expl, str):

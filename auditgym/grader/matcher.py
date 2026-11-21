@@ -67,6 +67,8 @@ class NormIssue:
 
 
 def normalize_finding(index_in_list: int, f: dict, idx: PublicIndex) -> NormFinding:
+    """Normalised view of one validated finding. Only the known fields are read: unknown extra
+    keys (``confidence``, …) and ``explanation`` are dropped here and never affect matching."""
     affected, unk_a = normalize_refs(f["affected_ids"], idx)
     evidence, unk_e = normalize_refs(f["evidence_ids"], idx)
     return NormFinding(

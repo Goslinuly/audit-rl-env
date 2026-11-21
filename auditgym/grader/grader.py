@@ -49,14 +49,6 @@ class GradeResult:
         return dataclasses.asdict(self)
 
 
-def _currencies(public: dict | None, truth: dict) -> set[str] | None:
-    if public and isinstance(public.get("manifest"), dict):
-        cur = public["manifest"].get("currencies")
-        if cur:
-            return {c.upper() for c in cur}  # dict keys or list
-    return None
-
-
 class Grader:
     """Stateless; one instance may grade any number of episodes."""
 
@@ -82,9 +74,7 @@ class Grader:
         issues_raw = truth.get("issues", [])
         empty_types = {t: {"tp": 0, "fp": 0, "fn": 0} for t in ISSUE_TYPES}
 
-        errors = validate_findings(
-            findings, episode_id=truth["episode_id"], currencies=_currencies(public, truth)
-        )
+        errors = validate_findings(findings, episode_id=truth["episode_id"])
         if errors:
             for i in issues_raw:
                 empty_types[i["type"]]["fn"] += 1
