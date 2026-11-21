@@ -8,6 +8,7 @@ from pathlib import Path
 
 from auditgym.policies import FlagAll, Oracle, RandomExplorer, Reconciler
 from auditgym.env import AuditEnv
+from auditgym.generator import GENERATOR_VERSION
 
 from .core import run_episode
 from .dry_run import DryRunEnv
@@ -74,6 +75,8 @@ def main(argv=None):
             result["policy_seed"] = args.seed if name == "RandomExplorer" else None
             result["execution_mode"] = "dry_run" if args.dry_run else "audit_env"
             result["mode"] = args.mode
+            # Code version; `make episodes-check` verifies committed episodes match it.
+            result["generator_version"] = GENERATOR_VERSION
             trajectories.extend(rows)
             results.append(result)
     leak_report = scan_trajectory(trajectories)

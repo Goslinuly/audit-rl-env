@@ -37,6 +37,8 @@ def record_cast(path, lines, duration):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", type=Path, help="New asciinema v2 .cast file")
+    parser.add_argument("--metrics", type=Path,
+                        help="Write only the measured metrics JSON (no .cast, no pacing)")
     parser.add_argument("--duration", type=int, default=135, help="Paced replay duration, 120..180s")
     args = parser.parse_args(argv)
     if args.record and (args.record.exists() or args.record.with_suffix(".json").exists()):
@@ -72,11 +74,14 @@ def main(argv=None):
                   "Eval uses a separate grader process and exposes zero reward to the agent.",
                   "Limits: synthetic data; no claim of real financial audit suitability.",
                   "End of measured-run demonstration."])
+    if args.metrics:
+        args.metrics.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8",
+                                newline="\n")
     if args.record:
         record_cast(args.record, lines, args.duration)
         args.record.with_suffix(".json").write_text(json.dumps(results, indent=2) + "\n",
                                                    encoding="utf-8", newline="\n")
-    else:
+    elif not args.metrics:
         print("\n".join(lines))
 
 

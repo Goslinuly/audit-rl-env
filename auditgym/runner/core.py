@@ -84,6 +84,7 @@ def run_episode(env, policy, *, policy_name, reset_kwargs=None, scorer=None, max
         "grader_version": grade.get("grader_version"),
         "precision": grade.get("precision"), "recall": grade.get("recall"),
         "f1": grade.get("f1"), "reward": grade.get("reward"),
+        "tp": grade.get("tp"), "fp": grade.get("fp"), "fn": grade.get("fn"),
         "return": sum(row["reward"] for row in trajectory),
         "steps": trajectory[-1]["step"],
         "inspection_steps": grade.get("inspection_steps", inspection_steps),
