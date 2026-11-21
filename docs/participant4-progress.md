@@ -21,9 +21,12 @@ python -m auditgym.runner.demo
 ```
 
 `make check` вызывает тот же полный прогон. `make grader-selfcheck` сохранён.
-Версия пакета — 1.0.0, версии env/generator — 0.1.0, grader — 1.0.0, config — 1.0.
-Их значения отражаются в результатах; версии владельцев компонентов не подменяются.
+Текущие версии компонентов задаются константами `auditgym.ENV_VERSION`,
+`auditgym.generator.GENERATOR_VERSION`, `auditgym.generator.CONFIG_VERSION` и
+`auditgym.grader.GRADER_VERSION` (на момент релиза 1.0.0: env/generator 0.1.0, grader 1.0.0,
+config 1.0). Их значения отражаются в `results.csv`; версии владельцев компонентов не
+подменяются.
 
 Документация приёмки: docs/acceptance.md; упаковки: docs/package.md;
-готовности к релизу: docs/release.md. Прототип UI сохранён отдельной страницей,
-без подключения к настоящим данным и без замены командного веб-обозревателя.
+готовности к релизу: docs/release.md. Веб-интерфейс подключён к настоящему API
+команды и служит просмотрщиком; на оценку среды не влияет.

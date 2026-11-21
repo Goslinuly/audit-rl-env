@@ -3,53 +3,125 @@
 Воспроизводимая RL-среда для ИИ-аудитора: синтетические документы компании, инструменты расследования,
 скрытые финансовые ошибки и функция награды. FinTech-трек хакатона, 19–22 ноября 2026.
 
-> Генератор, командные AuditEnv/Grader и разработки участника 4 интегрированы.
-> ТЗ команды — [`docs/TZ.md`](docs/TZ.md).
+ТЗ команды — [`docs/TZ.md`](docs/TZ.md), проектная записка — [`DESIGN.md`](DESIGN.md).
 
-## Быстрый старт
+## Единая команда проверки
+
+В контейнере (нужен только Docker, сеть во время проверки не используется):
 
 ```bash
-python -m pip install -e ".[dev]"
-python -m auditgym.runner.validate --out runs/check --deadline 600
+docker build -t audit-rl-env .
+docker run --rm --network none --cpus 2 --memory 4g audit-rl-env
+```
+
+Контейнер по умолчанию выполняет `make check`. На ноутбуке проверка занимает
+около 45 секунд, в контейнере с 2 CPU — ожидаемо 1–2 минуты. Код выхода 0 —
+всё прошло. Ход проверки печатается в терминал, итоговый отчёт пишется в
+`runs/check-<id>/validation.json` внутри контейнера (там же `acceptance.json` и
+`junit.xml`). Чтобы сохранить отчёт на хосте, подключите папку:
+
+```bash
+docker run --rm --network none --cpus 2 --memory 4g -v "$PWD/runs:/app/runs" audit-rl-env
+```
+
+Без Docker (Python 3.11+, на Linux, macOS или Windows с `make`):
+
+```bash
+python -m pip install -r requirements.lock
+python -m pip install --no-deps -e .
+make check          # = python -m auditgym.runner.validate
+```
+
+`make check` по порядку запускает: ruff, все тесты и 320 приёмочных проверок,
+сверку SHA256 эпизодов с генератором, selfcheck грейдера на всех эпизодах и
+четыре политики на dev. Если `make` нет, используйте
+`python -m auditgym.runner.validate --out runs/check --deadline 600`.
+
+Другие команды:
+
+```bash
+make test           # python -m pytest -q
+make artifacts      # пересобрать artifacts/ (4 политики на train + dev)
+make failure-analysis   # абляции Reconciler, таблица из DESIGN.md §7
+make docker-check   # docker build + make check с теми же ограничениями
 python -m auditgym.runner --episodes episodes/sample/sample_00 --out runs/sample
 python -m auditgym.runner --mode eval --episodes episodes/sample/sample_00 --out runs/eval
 python -m auditgym.runner.demo
 ```
 
-Полный прогон включает линтер, все тесты участников, 320 приёмочных проверок,
-SHA256, selfcheck grader и четыре политики на dev. Для каждого прогона runner
-и validate используйте новую папку вывода. На Linux также доступны:
+Для каждого прогона runner и validate нужна новая папка вывода.
 
-```bash
-make install
-make check          # единая команда проверки
-make docker-check   # то же в контейнере: --network none --cpus 2 --memory 4g
-```
+## Версии и зависимости
+
+- Все зависимости, включая транзитивные, закреплены точными версиями в
+  [`requirements.lock`](requirements.lock) (собран для Python 3.11 на Linux);
+  Docker-образ ставит именно их. Прямые зависимости также закреплены в `pyproject.toml`.
+- Версии компонентов задаются константами в коде и пишутся в каждую строку
+  `results.csv` и траекторий: `auditgym.ENV_VERSION`,
+  `auditgym.generator.GENERATOR_VERSION`, `auditgym.generator.CONFIG_VERSION`,
+  `auditgym.grader.GRADER_VERSION`. `make check` проверяет, что опубликованные
+  эпизоды побайтно совпадают с текущим генератором.
 
 ## Политики и результаты
 
-Runner использует среду участника 2 и оценщик участника 3 без альтернативной
-реализации этих модулей. Политики читают `result.items[*].record`; метрики берутся
-из `grade_log`. Диагностика grader с закрытыми ID не попадает в траектории агента.
-Oracle получает эталон от runner; остальные политики получают только наблюдения.
-В eval среда использует отдельный процесс, а награды в траектории равны нулю.
+Runner использует настоящие `AuditEnv` и `Grader`. Политики читают
+`result.items[*].record`; метрики берутся из `env.grade_log`. Диагностика grader с
+закрытыми ID не попадает в траектории агента. Oracle получает эталон от runner;
+остальные политики получают только наблюдения. В eval среда использует отдельный
+процесс, а награды в траектории равны нулю.
 
-| Политика | Средний F1 на 21 опубликованном эпизоде | Максимум шагов |
-| --- | ---: | ---: |
-| Oracle | 1,0 | 1 |
-| Reconciler | 1,0 | 45 |
-| FlagAll | 0 | 2 |
-| RandomExplorer (seed=42) | 0 | 9 |
+Измерено на 20 эпизодах train + dev (`make artifacts`, файлы в [`artifacts/`](artifacts/)),
+режим train. P, R, F1, reward, шаги — среднее по эпизодам:
 
-Файлы runner: `trajectories.jsonl`, `results.csv`, `leak_report.json`. CSV содержит
-версии среды/оценщика, P/R/F1, награду, возврат, шаги и время. `--dry-run` оставлен
-для диагностики транспорта без финансовых оценок. Ограничения и приёмка — в
-[`docs/acceptance.md`](docs/acceptance.md), упаковка — в [`docs/package.md`](docs/package.md).
+| Политика | P | R | F1 | reward | шаги (мин–макс) | P micro | R micro |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Oracle (эталон, видит ответ) | 0,750 | 0,750 | 1,000 | 1,000 | 1 | 1,000 | 1,000 |
+| Reconciler (скриптовый эксперт) | 0,750 | 0,750 | 1,000 | 0,960 | 21,1 (10–45) | 1,000 | 1,000 |
+| RandomExplorer, seed 7 | 0,000 | 0,000 | 0,250 | −0,504 | 9 | — (0 выводов) | 0,000 |
+| FlagAll | 0,000 | 0,000 | 0,000 | −1,000 | 2 | 0,000 | 0,000 |
+
+- Средние P и R у Oracle и Reconciler равны 0,75, потому что в 5 из 20 эпизодов
+  ошибок нет: грейдер ставит в таком эпизоде P = R = 0 даже за верный пустой ответ
+  (F1 = 1). Колонки micro посчитаны по суммам TP/FP/FN (95 ошибок всего).
+- RandomExplorer в этой таблице запущен с seed 7 — это значение по умолчанию в CLI
+  (`--seed 7`). С seed 7 он ни разу не делает вывод, поэтому получает F1 = 1 на
+  пустых эпизодах. Терминальное демо использует seed 42: там он всегда делает один
+  случайный вывод, и на train + dev получает F1 = 0, reward = −1.
+- Reconciler закодирован по тем же правилам обнаружения, что эталонный аудитор
+  генератора (`auditgym/generator/audit.py`). Его F1 = 1 — верхняя граница для
+  скриптового эксперта, а не признак того, что задача простая для обучаемого агента.
+  Что будет, если убрать из него отдельные знания (часовой пояс, правило курса на
+  выходные, сравнение строк счёта, правило частичной оплаты), измерено в
+  [DESIGN.md §7](DESIGN.md#7-измеренный-разбор-сбоев-базовых-политик): F1 падает до 0,42–0,75 от
+  каждого пункта и до 0,24 от всех вместе.
+
+Файлы runner: `trajectories.jsonl` (поля `episode_id`, `step`, `action`,
+`observation`, `reward`, `terminated`, `truncated` и служебные), `results.csv`
+(версии, P/R/F1, TP/FP/FN, награда, возврат, шаги, время), `leak_report.json`.
+`--dry-run` оставлен для диагностики транспорта без оценок. Приёмка —
+[`docs/acceptance.md`](docs/acceptance.md), упаковка — [`docs/package.md`](docs/package.md),
+устройство среды — [`DESIGN.md`](DESIGN.md).
 
 Запись терминального демо на 135 секунд: `docs/demo/participant4.cast`
-(`asciinema play docs/demo/participant4.cast`). Это результаты реального прогона
+(`asciinema play docs/demo/participant4.cast`), метрики того же прогона —
+`docs/demo/participant4.json`. Это результаты реального прогона на `sample_00`
 с паузами для чтения, а не имитация времени агента. Для новой записи:
 `python -m auditgym.runner.demo --record runs/demo/demo.cast --duration 135`.
+
+## Ограничения
+
+- Данные синтетические; проверялись только скриптовые политики, обучение не проводилось.
+  Качество на этих эпизодах не доказывает применимость к реальному аудиту.
+- Reconciler повторяет правила генератора, поэтому его результат — потолок, а не
+  оценка сложности задачи для обучаемого агента.
+- Базовый образ `python:3.11-slim` закреплён по тегу, без digest: при сборке
+  позже тег может указывать на другой патч Python/Debian. Зависимости Python
+  закреплены точно, но без хешей (`--require-hashes` не используется).
+- `requirements.lock` проверен на наличие колёс для CPython 3.11 Linux x86_64/aarch64;
+  на других версиях Python набор может отличаться.
+- Проверка утечек ищет известные маркеры и не доказывает отсутствие любых скрытых
+  каналов; API не является песочницей для недоверенного кода.
+- Траектории Oracle в `artifacts/` содержат правильные ответы (см. `artifacts/README.md`).
 
 ## Веб-обозреватель
 
@@ -62,7 +134,8 @@ Oracle получает эталон от runner; остальные полит�
 ![Cyberpunk-интерфейс auditgym на реальном эпизоде команды](docs/screenshots/workspace.png)
 
 Скачайте репозиторий через **Code → Download ZIP**, распакуйте и откройте терминал
-в его папке. Требуется Python 3.11 или новее:
+в его папке. Требуется Python 3.11 или новее (интерфейс только просматривает
+эпизоды и прогоны, на оценку среды не влияет):
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -98,11 +171,13 @@ HTTP-тесты входят в `make check`; отдельный job `web-ui` п
 | `auditgym/generator/` | скрытая история компании, документы, инъекция ошибок, отвлекающие случаи |
 | `auditgym/env/` | `AuditEnv.reset/step`, инструменты, калькулятор |
 | `auditgym/grader/` | валидация findings, matcher, метрики, награда |
-| `auditgym/policies/` | RandomExplorer, Reconciler, FlagAll, Oracle |
+| `auditgym/policies/` | RandomExplorer, Reconciler, FlagAll, Oracle; абляции Reconciler |
 | `auditgym/runner/` | прогон эпизодов, `trajectories.jsonl`, отчёт |
 | `schemas/` | JSON Schema всех форматов |
 | `configs/`, `episodes/` | train/dev конфиги и эпизоды |
 | `tests/` | тесты модулей и приёмочный набор |
+| `artifacts/` | закоммиченные траектории, результаты и разбор сбоев |
+| `tools/` | `failure_analysis.py`, `summarize_results.py`, проверки UI и wheel |
 
 Все данные вымышлены. Это программная задача, а не аудиторское заключение.
 

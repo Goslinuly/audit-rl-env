@@ -13,6 +13,21 @@
   «Эпизоды», месяц и набор вместо `train_03`), документ-доказательство показан
   полями с суммами, а не JSON; пункты меню в одну строку.
 
+- Упаковка и разбор сбоев: `requirements.lock` с точными версиями всех зависимостей
+  (Python 3.11, Linux), Docker ставит зависимости из него; `make test` вызывает
+  `python -m pytest`, в pytest добавлен `pythonpath = ["."]`.
+- `artifacts/`: траектории, результаты и leak report четырёх политик на train + dev
+  (`make artifacts`), сводка `summary.md`.
+- Абляции Reconciler (`auditgym/policies/ablations.py`, `tools/failure_analysis.py`,
+  `make failure-analysis`) и измеренная таблица в DESIGN.md §7; существующие политики
+  не изменены.
+- В `results.csv` добавлены колонки `tp`, `fp`, `fn`, `generator_version`.
+- `python -m auditgym.runner.demo --metrics PATH` пишет только JSON метрик;
+  `docs/demo/participant4.json` пересчитан под новые ID эпизодов (.cast не менялся,
+  метрики совпадают).
+- README: инструкция для контейнера, полная таблица метрик, раздел ограничений;
+  DESIGN.md: убраны заглушки, обновлены §7 и §8.
+
 ## Package 1.0.0 — release
 
 - Добавлена публикация по тегу v1.0.0 после повторных проверок точного релизного исходника.
