@@ -14,3 +14,5 @@ out/
 runs/
 # закрытые сиды/эпизоды для самопроверки — не коммитим
 episodes/private_*/
+artifacts/.run/
+.lock-venv/
