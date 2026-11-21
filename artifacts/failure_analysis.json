@@ -1,0 +1,341 @@
+{
+  "Reconciler (full)": {
+    "flags": [],
+    "episodes": 20,
+    "tp": 95,
+    "fp": 0,
+    "fn": 0,
+    "mean_precision": 0.75,
+    "mean_recall": 0.75,
+    "mean_f1": 1.0,
+    "mean_reward": 0.9597,
+    "micro_precision": 1.0,
+    "micro_recall": 1.0,
+    "micro_f1": 1.0,
+    "by_type": {
+      "duplicate_invoice": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "payment_allocation": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 0
+      },
+      "fx_conversion": {
+        "tp": 30,
+        "fp": 0,
+        "fn": 0
+      },
+      "period_cutoff": {
+        "tp": 25,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "fp_reasons": {},
+    "fp_sources": {}
+  },
+  "no_tz_period": {
+    "flags": [
+      "utc_period"
+    ],
+    "episodes": 20,
+    "tp": 84,
+    "fp": 21,
+    "fn": 11,
+    "mean_precision": 0.636388888888889,
+    "mean_recall": 0.6650992063492063,
+    "mean_f1": 0.7466356020999985,
+    "mean_reward": 0.4599712041999968,
+    "micro_precision": 0.8,
+    "micro_recall": 0.8842105263157894,
+    "micro_f1": 0.8400000000000001,
+    "by_type": {
+      "duplicate_invoice": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "payment_allocation": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 0
+      },
+      "fx_conversion": {
+        "tp": 30,
+        "fp": 0,
+        "fn": 0
+      },
+      "period_cutoff": {
+        "tp": 14,
+        "fp": 21,
+        "fn": 11
+      }
+    },
+    "fp_reasons": {
+      "no_issues": 7,
+      "affected_ids": 14
+    },
+    "fp_sources": {
+      "boundary": 11,
+      "not a distractor": 7,
+      "recurring": 3
+    }
+  },
+  "no_tz_fx_date": {
+    "flags": [
+      "utc_fx_date"
+    ],
+    "episodes": 20,
+    "tp": 87,
+    "fp": 73,
+    "fn": 8,
+    "mean_precision": 0.46248917748917756,
+    "mean_recall": 0.6806547619047618,
+    "mean_f1": 0.6307798451548453,
+    "mean_reward": 0.2282596903096903,
+    "micro_precision": 0.54375,
+    "micro_recall": 0.9157894736842105,
+    "micro_f1": 0.6823529411764705,
+    "by_type": {
+      "duplicate_invoice": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "payment_allocation": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 0
+      },
+      "fx_conversion": {
+        "tp": 22,
+        "fp": 73,
+        "fn": 8
+      },
+      "period_cutoff": {
+        "tp": 25,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "fp_reasons": {
+      "no_issues": 6,
+      "affected_ids": 62,
+      "amount": 5
+    },
+    "fp_sources": {
+      "not a distractor": 55,
+      "partial_payment": 4,
+      "boundary": 4,
+      "recurring": 6,
+      "split_payment": 3,
+      "refund": 1
+    }
+  },
+  "no_weekend_fx_rule": {
+    "flags": [
+      "exact_fx_date"
+    ],
+    "episodes": 20,
+    "tp": 82,
+    "fp": 159,
+    "fn": 13,
+    "mean_precision": 0.31985987336051275,
+    "mean_recall": 0.6555753968253969,
+    "mean_f1": 0.4229755513743182,
+    "mean_reward": -0.18544889725136338,
+    "micro_precision": 0.34024896265560167,
+    "micro_recall": 0.8631578947368421,
+    "micro_f1": 0.4880952380952381,
+    "by_type": {
+      "duplicate_invoice": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "payment_allocation": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 0
+      },
+      "fx_conversion": {
+        "tp": 17,
+        "fp": 159,
+        "fn": 13
+      },
+      "period_cutoff": {
+        "tp": 25,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "fp_reasons": {
+      "no_issues": 34,
+      "affected_ids": 121,
+      "amount": 4
+    },
+    "fp_sources": {
+      "weekend_fx": 22,
+      "recurring": 14,
+      "not a distractor": 95,
+      "split_payment": 12,
+      "partial_payment": 5,
+      "prior_invoice": 5,
+      "refund": 2,
+      "boundary": 4
+    }
+  },
+  "loose_duplicates": {
+    "flags": [
+      "loose_duplicates"
+    ],
+    "episodes": 20,
+    "tp": 95,
+    "fp": 67,
+    "fn": 0,
+    "mean_precision": 0.500705266955267,
+    "mean_recall": 0.75,
+    "mean_f1": 0.5956281626869863,
+    "mean_reward": 0.15985632537397246,
+    "micro_precision": 0.5864197530864198,
+    "micro_recall": 1.0,
+    "micro_f1": 0.7392996108949417,
+    "by_type": {
+      "duplicate_invoice": {
+        "tp": 19,
+        "fp": 67,
+        "fn": 0
+      },
+      "payment_allocation": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 0
+      },
+      "fx_conversion": {
+        "tp": 30,
+        "fp": 0,
+        "fn": 0
+      },
+      "period_cutoff": {
+        "tp": 25,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "fp_reasons": {
+      "no_issues": 22,
+      "type": 3,
+      "affected_ids": 42
+    },
+    "fp_sources": {
+      "recurring": 67
+    }
+  },
+  "flag_partial": {
+    "flags": [
+      "flag_partial"
+    ],
+    "episodes": 20,
+    "tp": 95,
+    "fp": 32,
+    "fn": 0,
+    "mean_precision": 0.5844209956709956,
+    "mean_recall": 0.75,
+    "mean_f1": 0.6537052816464582,
+    "mean_reward": 0.27601056329291623,
+    "micro_precision": 0.7480314960629921,
+    "micro_recall": 1.0,
+    "micro_f1": 0.8558558558558559,
+    "by_type": {
+      "duplicate_invoice": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "payment_allocation": {
+        "tp": 21,
+        "fp": 32,
+        "fn": 0
+      },
+      "fx_conversion": {
+        "tp": 30,
+        "fp": 0,
+        "fn": 0
+      },
+      "period_cutoff": {
+        "tp": 25,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "fp_reasons": {
+      "no_issues": 8,
+      "type": 4,
+      "affected_ids": 20
+    },
+    "fp_sources": {
+      "partial_payment": 32
+    }
+  },
+  "all_ablations": {
+    "flags": [
+      "utc_period",
+      "utc_fx_date",
+      "exact_fx_date",
+      "loose_duplicates",
+      "flag_partial"
+    ],
+    "episodes": 20,
+    "tp": 65,
+    "fp": 324,
+    "fn": 30,
+    "mean_precision": 0.1578448851629966,
+    "mean_recall": 0.5163095238095238,
+    "mean_f1": 0.23725966114927885,
+    "mean_reward": -0.5568806777014423,
+    "micro_precision": 0.16709511568123395,
+    "micro_recall": 0.6842105263157895,
+    "micro_f1": 0.2685950413223141,
+    "by_type": {
+      "duplicate_invoice": {
+        "tp": 19,
+        "fp": 67,
+        "fn": 0
+      },
+      "payment_allocation": {
+        "tp": 21,
+        "fp": 30,
+        "fn": 0
+      },
+      "fx_conversion": {
+        "tp": 12,
+        "fp": 208,
+        "fn": 18
+      },
+      "period_cutoff": {
+        "tp": 13,
+        "fp": 19,
+        "fn": 12
+      }
+    },
+    "fp_reasons": {
+      "no_issues": 76,
+      "type": 7,
+      "affected_ids": 233,
+      "amount": 8
+    },
+    "fp_sources": {
+      "recurring": 89,
+      "weekend_fx": 22,
+      "partial_payment": 37,
+      "not a distractor": 138,
+      "split_payment": 13,
+      "boundary": 17,
+      "prior_invoice": 5,
+      "refund": 3
+    }
+  }
+}
