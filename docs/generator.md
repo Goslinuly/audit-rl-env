@@ -10,6 +10,8 @@ python -m auditgym.generator build            # пересобрать episodes/
 python -m auditgym.generator build --check    # регенерация байт-в-байт совпадает с закоммиченной
 python -m auditgym.generator verify episodes/train/train_00
 python -m auditgym.generator selfcheck        # 20 эпизодов «как у жюри»: 5 чистых, 5 с A/B, 10 смешанных
+python -m auditgym.generator transform episodes/dev/dev_05 /tmp/dev05b --remap-seed 1 --shuffle-seed 2
+                                              # тот же эпизод с новыми ID и порядком строк (парные проверки)
 ```
 
 ```python
@@ -113,6 +115,7 @@ public, private = load_episode("episodes/train/train_00")      # те же ст�
 * **Политики (4):** Oracle = `truth.issues` → findings (`claimed_amount_minor = expected_amount_minor`, `evidence_ids = evidence_sets[0]`).
 
 ## Ограничения
+* `payment_allocation`: набор доказательств `{платёж, счёт}` достаточен при условии, что других оплат этого счёта нет. Генератор это гарантирует для внесённых ошибок, но по двум документам это видно не всегда; полная проверка требует просмотра всех платежей клиента.
 * Только дебиторская сторона (продажи и поступления); кредиторки, НДС и мультивалютных переоценок на конец периода нет.
 * Фиксированные смещения часовых поясов, без перехода на летнее время; праздники не моделируются (курсы только по будним дням).
 * `episode_id` = `"ep-" + sha256(публичные записи без самого ID)[:12]` — он не несёт информации сверх того, что агент уже видит, и не обращается в seed (до 0.2.0 ID зависел только от seed и перебирался за миллисекунды).

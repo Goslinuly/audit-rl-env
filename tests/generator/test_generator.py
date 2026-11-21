@@ -196,3 +196,16 @@ def test_episode_id_is_derived_from_public_records_not_seed():
     assert ep.episode_id != old
     assert ep.private["truth"]["episode_id"] == ep.episode_id
     assert ep.private["provenance"]["episode_id"] == ep.episode_id
+
+
+def test_transform_cli_keeps_oracle_answer(tmp_path):
+    from auditgym.generator.__main__ import main
+
+    src = os.path.join(REPO_ROOT, "episodes", "dev", "dev_05")
+    out = tmp_path / "t"
+    assert main(["transform", src, str(out), "--remap-seed", "3", "--shuffle-seed", "4"]) == 0
+    public, private = load_episode(out)
+    _, orig = load_episode(src)
+    assert public["manifest"]["episode_id"] == private["truth"]["episode_id"] != orig["truth"]["episode_id"]
+    assert len(private["truth"]["issues"]) == len(orig["truth"]["issues"])
+    assert verify_episode(public, private["truth"]) == []
