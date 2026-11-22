@@ -13,7 +13,7 @@ install-locked:
 	pip install --no-deps -e .
 
 lint:
-	$(PYTHON) -m ruff check auditgym tests
+	$(PYTHON) -m ruff check auditgym tests judge_adapter.py
 
 test:
 	$(PYTHON) -m pytest -q

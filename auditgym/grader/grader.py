@@ -24,6 +24,8 @@ from .normalize import PublicIndex
 from .reward import metrics, terminal_reward
 from .validate import validate_findings
 
+UNKNOWN_TYPE = "unknown"  # by_type row for findings whose type is not one of ISSUE_TYPES
+
 
 @dataclass
 class GradeResult:
@@ -105,7 +107,9 @@ class Grader:
         matched_issues = {j for _, j in outcome.pairs}
         by_type = empty_types
         for fi, f in enumerate(norm_f):
-            by_type[f.type]["tp" if outcome.reasons[fi] == "tp" else "fp"] += 1
+            key = f.type if f.type in by_type else UNKNOWN_TYPE
+            row = by_type.setdefault(key, {"tp": 0, "fp": 0, "fn": 0})
+            row["tp" if outcome.reasons[fi] == "tp" else "fp"] += 1
         for j, issue in enumerate(norm_i):
             if j not in matched_issues:
                 by_type[issue.type]["fn"] += 1

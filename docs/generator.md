@@ -73,7 +73,7 @@ public, private = load_episode("episodes/train/train_00")      # те же ст�
  "tolerance_minor": 1, "group": "B1", "description": "..."}
 ```
 
-Формат ID везде: `"<table>:<id>"` — `ledger:<row_id>`, `invoices:<invoice_id>`, `payments:<payment_id>`, `fx:<date>/<source>/<target>`. `doc_id` в эталоне не используется (матчеру стоит принимать его как алиас — решение участника 3). Списки отсортированы.
+Формат ID везде: `"<table>:<id>"` — `ledger:<row_id>`, `invoices:<invoice_id>`, `payments:<payment_id>`, `fx:<date>/<source>/<target>`. `doc_id` в эталоне не используется; оценщик его не принимает, адаптер жюри переводит (`docs/judge.md`). Списки отсортированы.
 
 | type | Когда это ошибка (правило `audit.py`) | affected_ids | expected_amount_minor, currency | evidence_sets |
 | --- | --- | --- | --- | --- |
@@ -82,7 +82,7 @@ public, private = load_episode("episodes/train/train_00")      # те же ст�
 | `fx_conversion` | проведённый документ в иностранной валюте, главная строка (AR-дебет / bank) ≠ конверсии по курсу policy | `[<документ>]` | \|проведено − правильно\| главной строки, базовая валюта | `[документ, главная строка леджера, fx-строка правильной даты]` |
 | `period_cutoff` | проведённый документ, чья дата в поясе компании вне `[start, end)` | `[<документ>]` | \|главная строка как проведена\|, базовая валюта | `[документ, главная строка леджера]` |
 
-Открытый остаток счёта = `total_minor − Σ applied_minor` по всем платежам. `tolerance_minor`: 1 для FX (округление), 0 для остальных — рекомендация, окончательный допуск задаёт матчер.
+Открытый остаток счёта = `total_minor − Σ applied_minor` по всем платежам. `tolerance_minor`: 1 для FX (округление), 0 для остальных; matcher использует это число.
 
 ### Взаимодействующие сценарии (`group`)
 * **A** — поступление в иностранной валюте через минуты после конца периода (в UTC дата ещё последняя), проведено в периоде, распределено частично и сконвертировано по курсу не той даты → `period_cutoff` + `payment_allocation` + `fx_conversion` на одном платеже. Сумма cutoff — строка банка **как проведена** (с FX-ошибкой).
@@ -105,6 +105,7 @@ public, private = load_episode("episodes/train/train_00")      # те же ст�
 | `error_counts` | по каждому из 4 типов отдельно |
 | `interactions` | `{"A": n, "B": n}` |
 | `distractors` | количество каждого вида отвлекающих случаев |
+| `allocation_mode` | необязательный: `missing` или `partial` — вид отдельных ошибок `payment_allocation`; без ключа выбирает seed |
 
 Валидация: максимум 12 issues на эпизод (A = 3, B = 2), FX/A/B требуют ≥ 2 валют.
 

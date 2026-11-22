@@ -26,7 +26,7 @@ from .io import load_private, load_public, public_files, write_episode
 from .render import SCHEMA_VERSION, build_doc_entries, render
 from .verify import check_clean, verify_episode
 
-GENERATOR_VERSION = "0.2.0"
+GENERATOR_VERSION = "0.3.0"
 MAX_ATTEMPTS = 25
 
 __all__ = [

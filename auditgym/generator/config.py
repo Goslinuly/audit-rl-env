@@ -68,6 +68,11 @@ DEFAULTS: dict[str, Any] = {
 }
 
 
+# Optional keys without a default: absent = chosen by the seed. Not merged into DEFAULTS, so
+# configs that do not use them keep their provenance unchanged.
+OPTIONAL_KEYS = {"allocation_mode": ("missing", "partial")}
+
+
 class ConfigError(ValueError):
     pass
 
@@ -131,10 +136,13 @@ def needs_foreign_max(cfg: dict) -> bool:
 
 def validate(cfg: dict) -> None:
     for key in cfg:
-        if key not in DEFAULTS:
+        if key not in DEFAULTS and key not in OPTIONAL_KEYS:
             raise ConfigError(f"unknown config key {key!r}")
     if cfg["config_version"] != CONFIG_VERSION:
         raise ConfigError(f"config_version must be {CONFIG_VERSION!r}")
+    for key, allowed in OPTIONAL_KEYS.items():
+        if key in cfg and cfg[key] not in allowed:
+            raise ConfigError(f"{key} must be one of {allowed}")
     if not isinstance(cfg["name"], str):
         raise ConfigError("name must be a string")
 

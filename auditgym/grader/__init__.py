@@ -14,10 +14,10 @@ from .constants import (
     MAX_EXPLANATION_CHARS,
     MAX_FINDINGS,
     STEP_COST,
-    TOLERANCE_MINOR,
+    TOLERANCE_BY_TYPE,
 )
 from .grader import Grader, GradeResult, reason_counts, score
-from .normalize import PublicIndex, normalize_ref, normalize_refs
+from .normalize import PublicIndex, normalize_refs
 from .oracle import oracle_findings
 from .reward import metrics, terminal_reward
 from .validate import validate_findings
@@ -29,12 +29,11 @@ __all__ = [
     "MAX_EXPLANATION_CHARS",
     "MAX_FINDINGS",
     "STEP_COST",
-    "TOLERANCE_MINOR",
+    "TOLERANCE_BY_TYPE",
     "GradeResult",
     "Grader",
     "PublicIndex",
     "metrics",
-    "normalize_ref",
     "normalize_refs",
     "oracle_findings",
     "reason_counts",

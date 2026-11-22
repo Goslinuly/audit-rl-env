@@ -27,7 +27,14 @@ from __future__ import annotations
 import dataclasses
 import json
 import multiprocessing as mp
+import os
+import socket
+import subprocess
+import sys
 from pathlib import Path
+
+if os.name == "posix":
+    from multiprocessing.connection import Connection
 
 REPLY_TIMEOUT_S = 60.0
 
@@ -177,16 +184,35 @@ def _worker(conn, grader_factory, redact: bool = False, log_path=None) -> None:
 
 
 class ProcessBackend:
-    """Episode generation and grading in a separate process (spawned, not forked)."""
+    """Episode generation and grading in a separate process.
+
+    POSIX: a fresh interpreter (``python -m auditgym.env.worker``) connected by a private
+    socket pair. It does not re-import the caller's ``__main__`` (so a harness script needs no
+    ``if __name__ == "__main__"`` guard) and may be started from a daemonic process.
+    Windows, or a custom grader factory: ``multiprocessing`` with the ``spawn`` method.
+    """
 
     def __init__(self, grader_factory=None, *, redact: bool = False, log_path=None):
-        ctx = mp.get_context("spawn")
-        self._conn, child = ctx.Pipe()
         log_path = str(log_path) if log_path else None
-        self._proc = ctx.Process(target=_worker, args=(child, grader_factory, redact, log_path),
-                                 daemon=True)
-        self._proc.start()
-        child.close()
+        if grader_factory is None and os.name == "posix":
+            parent, child = socket.socketpair()
+            env = dict(os.environ)
+            root = str(Path(__file__).resolve().parents[2])
+            env["PYTHONPATH"] = os.pathsep.join(filter(None, [root, env.get("PYTHONPATH")]))
+            self._proc = subprocess.Popen(
+                [sys.executable, "-m", "auditgym.env.worker", str(child.fileno()),
+                 json.dumps({"redact": redact, "log_path": log_path})],
+                pass_fds=[child.fileno()], env=env, stdin=subprocess.DEVNULL,
+            )
+            child.close()
+            self._conn = Connection(parent.detach())
+        else:
+            ctx = mp.get_context("spawn")
+            self._conn, child = ctx.Pipe()
+            self._proc = ctx.Process(target=_worker,
+                                     args=(child, grader_factory, redact, log_path), daemon=True)
+            self._proc.start()
+            child.close()
 
     def _call(self, *msg):
         if self._conn is None:
@@ -219,9 +245,16 @@ class ProcessBackend:
             self._conn.close()
             self._conn = None
         if self._proc is not None:
-            self._proc.join(timeout=5)
-            if self._proc.is_alive():
-                self._proc.kill()
+            if isinstance(self._proc, subprocess.Popen):
+                try:
+                    self._proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self._proc.kill()
+                    self._proc.wait()
+            else:
+                self._proc.join(timeout=5)
+                if self._proc.is_alive():
+                    self._proc.kill()
             self._proc = None
 
     def __del__(self):

@@ -81,6 +81,9 @@ class PublicStore:
     def counts(self) -> dict[str, int]:
         return {t: len(self._public[t]) for t in TABLES}
 
+    def tables(self) -> dict[str, list[dict]]:
+        return {t: copy.deepcopy(self._public[t]) for t in TABLES}
+
     def contains(self, table: str, key: str) -> bool:
         return key in self._index.get(table, {})
 
