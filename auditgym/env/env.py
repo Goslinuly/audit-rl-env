@@ -39,7 +39,8 @@ from .store import MAX_PAGE, TABLES, PublicStore
 
 MODES = ("train", "eval")
 GRADER_LOG_ENV = "AUDITGYM_GRADER_LOG"
-MAX_ACTION_BYTES = 64 * 1024
+# The largest valid submit (30 findings x 1000 code points) needs about 200 KB of JSON.
+MAX_ACTION_BYTES = 1024 * 1024
 
 TASK = (
     "You are auditing one reporting period of a fictional company. Investigate the public "
@@ -177,9 +178,10 @@ class AuditEnv:
         if config is not None and not isinstance(config, dict):
             raise TypeError("config must be a dict")
         self._state = None
+        started = self._clock()  # the time limit counts from the start of reset
         public, meta = self._backend.start(seed, config, episode_dir)
         store = PublicStore(public, meta["episode_id"])
-        self._state = _State(store, dict(meta), self._clock())
+        self._state = _State(store, dict(meta), started)
         obs = {
             "task": TASK,
             "episode_id": meta["episode_id"],
@@ -191,6 +193,14 @@ class AuditEnv:
             "steps_remaining": self.max_steps,
         }
         return obs, self._info()
+
+    def public_records(self) -> dict:
+        """Copy of the episode's public tables, for adapters on the runner's side. It is data
+        the agent could read through actions, but it bypasses the step budget: never pass it
+        to a policy."""
+        if self._state is None:
+            raise RuntimeError("call reset() first")
+        return self._state.store.tables()
 
     def close(self) -> None:
         if self._backend is not None:
@@ -267,6 +277,8 @@ class AuditEnv:
         except (TypeError, ValueError, RecursionError):
             raise E.bad_args("action must be JSON-serialisable") from None
         if size > self.max_action_bytes:
+            if action.get("name") == "submit":  # can only be structurally invalid: graded -1
+                return "submit", {"findings": None}
             raise E.bad_args(f"action is larger than {self.max_action_bytes} bytes")
         if set(action) - {"name", "args"}:
             raise E.bad_args("action may only contain 'name' and 'args'")

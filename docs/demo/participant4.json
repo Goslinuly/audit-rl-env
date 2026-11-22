@@ -2,9 +2,9 @@
   {
     "episode_id": "ep-a6e96067696c",
     "policy": "Oracle",
-    "env_version": "0.1.0",
+    "env_version": "1.1.0",
     "config_version": "1.0",
-    "grader_version": "1.0.0",
+    "grader_version": "2.0.0",
     "precision": 1.0,
     "recall": 1.0,
     "f1": 1.0,
@@ -17,15 +17,15 @@
     "inspection_steps": 0,
     "terminated": true,
     "truncated": false,
-    "time_s": 0.009105791919864714,
+    "time_s": 0.008278375025838614,
     "scored": true
   },
   {
     "episode_id": "ep-a6e96067696c",
     "policy": "FlagAll",
-    "env_version": "0.1.0",
+    "env_version": "1.1.0",
     "config_version": "1.0",
-    "grader_version": "1.0.0",
+    "grader_version": "2.0.0",
     "precision": 0.0,
     "recall": 0.0,
     "f1": 0.0,
@@ -38,15 +38,15 @@
     "inspection_steps": 1,
     "terminated": true,
     "truncated": false,
-    "time_s": 0.00841941696126014,
+    "time_s": 0.007938208989799023,
     "scored": true
   },
   {
     "episode_id": "ep-a6e96067696c",
     "policy": "RandomExplorer",
-    "env_version": "0.1.0",
+    "env_version": "1.1.0",
     "config_version": "1.0",
-    "grader_version": "1.0.0",
+    "grader_version": "2.0.0",
     "precision": 0.0,
     "recall": 0.0,
     "f1": 0.0,
@@ -59,15 +59,15 @@
     "inspection_steps": 8,
     "terminated": true,
     "truncated": false,
-    "time_s": 0.013146208948455751,
+    "time_s": 0.012872292078100145,
     "scored": true
   },
   {
     "episode_id": "ep-a6e96067696c",
     "policy": "Reconciler",
-    "env_version": "0.1.0",
+    "env_version": "1.1.0",
     "config_version": "1.0",
-    "grader_version": "1.0.0",
+    "grader_version": "2.0.0",
     "precision": 1.0,
     "recall": 1.0,
     "f1": 1.0,
@@ -80,7 +80,7 @@
     "inspection_steps": 16,
     "terminated": true,
     "truncated": false,
-    "time_s": 0.038014083984307945,
+    "time_s": 0.03709366696421057,
     "scored": true
   }
 ]

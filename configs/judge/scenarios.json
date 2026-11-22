@@ -1,0 +1,349 @@
+{
+  "D01": {
+    "scenario": "чистая: обычная сверка",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D01",
+      "clean": true,
+      "distractors": {
+        "split_payment": 0,
+        "partial_payment": 0,
+        "recurring": 0,
+        "refund": 0,
+        "boundary": 0,
+        "next_period_invoice": 0,
+        "weekend_fx": 0,
+        "prior_invoice": 0
+      }
+    }
+  },
+  "D02": {
+    "scenario": "чистая: разбитый платёж",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D02",
+      "clean": true,
+      "distractors": {
+        "split_payment": 2,
+        "partial_payment": 0,
+        "recurring": 0,
+        "refund": 0,
+        "boundary": 0,
+        "next_period_invoice": 0,
+        "weekend_fx": 0,
+        "prior_invoice": 0
+      }
+    }
+  },
+  "D03": {
+    "scenario": "чистая: возврат",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D03",
+      "clean": true,
+      "distractors": {
+        "split_payment": 0,
+        "partial_payment": 0,
+        "recurring": 0,
+        "refund": 2,
+        "boundary": 0,
+        "next_period_invoice": 0,
+        "weekend_fx": 0,
+        "prior_invoice": 0
+      }
+    }
+  },
+  "D04": {
+    "scenario": "чистая: повторяющиеся суммы",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D04",
+      "clean": true,
+      "distractors": {
+        "split_payment": 0,
+        "partial_payment": 0,
+        "recurring": 3,
+        "refund": 0,
+        "boundary": 0,
+        "next_period_invoice": 0,
+        "weekend_fx": 0,
+        "prior_invoice": 0
+      }
+    }
+  },
+  "D05": {
+    "scenario": "чистая: валютная и периодная граница",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D05",
+      "clean": true,
+      "distractors": {
+        "split_payment": 0,
+        "partial_payment": 0,
+        "recurring": 0,
+        "refund": 0,
+        "boundary": 3,
+        "next_period_invoice": 1,
+        "weekend_fx": 2,
+        "prior_invoice": 0
+      }
+    }
+  },
+  "D06": {
+    "scenario": "дубль счёта",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D06",
+      "error_counts": {
+        "duplicate_invoice": 1,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D07": {
+    "scenario": "дубль счёта",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D07",
+      "error_counts": {
+        "duplicate_invoice": 1,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D08": {
+    "scenario": "дубль счёта",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D08",
+      "error_counts": {
+        "duplicate_invoice": 1,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D09": {
+    "scenario": "платёж не распределён",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D09",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 1,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      },
+      "allocation_mode": "missing"
+    }
+  },
+  "D10": {
+    "scenario": "платёж распределён частично",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D10",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 1,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      },
+      "allocation_mode": "partial"
+    }
+  },
+  "D11": {
+    "scenario": "распределение: вид по seed",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D11",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 1,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D12": {
+    "scenario": "курс не той даты",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D12",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 1,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D13": {
+    "scenario": "курс не той даты",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D13",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 1,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D14": {
+    "scenario": "документ не того периода",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D14",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 1
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D15": {
+    "scenario": "документ не того периода",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D15",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 1
+      },
+      "interactions": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  },
+  "D16": {
+    "scenario": "взаимодействие A",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D16",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 1,
+        "B": 0
+      }
+    }
+  },
+  "D17": {
+    "scenario": "взаимодействие A",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D17",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 1,
+        "B": 0
+      }
+    }
+  },
+  "D18": {
+    "scenario": "взаимодействие A",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D18",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 1,
+        "B": 0
+      }
+    }
+  },
+  "D19": {
+    "scenario": "взаимодействие B",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D19",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 1
+      }
+    }
+  },
+  "D20": {
+    "scenario": "взаимодействие B",
+    "team_config": {
+      "config_version": "1.0",
+      "name": "D20",
+      "error_counts": {
+        "duplicate_invoice": 0,
+        "payment_allocation": 0,
+        "fx_conversion": 0,
+        "period_cutoff": 0
+      },
+      "interactions": {
+        "A": 0,
+        "B": 1
+      }
+    }
+  }
+}

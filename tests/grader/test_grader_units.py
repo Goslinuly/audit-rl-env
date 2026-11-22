@@ -11,52 +11,20 @@ from auditgym.grader import (
     Grader,
     PublicIndex,
     metrics,
-    normalize_ref,
     normalize_refs,
     terminal_reward,
 )
 
 
 # --- normalisation -----------------------------------------------------------------------
-def test_normalize_ref_rules():
-    assert normalize_ref("  Ledger:L0042 ") == "ledger:L0042"
-    assert normalize_ref("INVOICES : INV-7Q2K") == "invoices:INV-7Q2K"
-    assert normalize_ref("fx:2026-03-31/usd/kzt") == "fx:2026-03-31/USD/KZT"
-    assert normalize_ref("L0042") == "L0042"  # no prefix and no episode index → left alone
-    assert normalize_ref("ledger:l0042") == "ledger:l0042"  # IDs stay case-sensitive
-
-
-def test_doc_id_alias_and_existence():
+def test_normalize_refs_is_exact_and_only_makes_a_set():
     public, _truth = episode("sample_00")
     idx = PublicIndex.from_public(public)
-    inv = public["invoices"][0]
-    pay = public["payments"][0]
-    assert normalize_ref(f"invoices:{inv['doc_id']}", idx) == f"invoices:{inv['invoice_id']}"
-    assert normalize_ref(f"payments:{pay['doc_id']}", idx) == f"payments:{pay['payment_id']}"
-    # a document id under the wrong table is not resolved
-    assert normalize_ref(f"payments:{inv['doc_id']}", idx) == f"payments:{inv['doc_id']}"
-    canon, unknown = normalize_refs(
-        [f"ledger:{public['ledger'][0]['row_id']}", "ledger:NOPE", " Ledger:NOPE "], idx
-    )
-    assert canon == tuple(sorted({f"ledger:{public['ledger'][0]['row_id']}", "ledger:NOPE"}))
-    assert unknown == ("ledger:NOPE",)
-
-
-def test_doc_id_alias_matches_in_findings():
-    public, _truth = episode("sample_00")
-    by_inv = {i["invoice_id"]: i["doc_id"] for i in public["invoices"]}
-    by_pay = {p["payment_id"]: p["doc_id"] for p in public["payments"]}
-
-    def alias(ref):
-        t, _, k = ref.partition(":")
-        return f"{t}:{by_inv.get(k) or by_pay.get(k) or k}"
-
-    o = oracle("sample_00")
-    for f in o["findings"]:
-        f["affected_ids"] = [alias(x) for x in f["affected_ids"]]
-        f["evidence_ids"] = [alias(x).upper() if x.startswith("fx") else alias(x) for x in f["evidence_ids"]]
-    r = grade(o, "sample_00")
-    assert r.reward == 1.0, r.finding_reasons
+    row = f"ledger:{public['ledger'][0]['row_id']}"
+    doc = f"invoices:{public['invoices'][0]['doc_id']}"
+    ids, unknown = normalize_refs([row, row, "ledger:NOPE", f" {row}", doc], idx)
+    assert ids == {row, "ledger:NOPE", f" {row}", doc}
+    assert unknown == tuple(sorted(["ledger:NOPE", f" {row}", doc]))
 
 
 def test_repeated_ids_inside_one_finding_are_deduplicated():

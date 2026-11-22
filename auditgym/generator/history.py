@@ -319,7 +319,8 @@ class Builder:
         issued = self.rand_dt(self.start, self.end - timedelta(days=3))
         inv = self.new_invoice(issued)
         pay = self.pay_in_full(inv, self.rand_dt(issued + timedelta(hours=2), self.end - timedelta(minutes=5)))
-        mode = self.rng.choice(("missing", "partial"))
+        mode = self.rng.choice(("missing", "partial"))  # always drawn: keeps the RNG stream
+        mode = self.cfg.get("allocation_mode", mode)
         self.targets.append({"kind": "payment_allocation", "invoice": inv, "payment": pay, "mode": mode})
 
     def _fx_target_time(self) -> tuple[datetime, str]:

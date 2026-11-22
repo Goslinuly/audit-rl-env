@@ -16,8 +16,8 @@ docker run --rm --network none --cpus 2 --memory 4g audit-rl-env
 
 Контейнер по умолчанию выполняет `make check`. На ноутбуке проверка занимает
 около 45 секунд. В CI (GitHub Actions, `--network none --cpus 2 --memory 4g`)
-сборка образа занимает около 20 секунд, проверка в контейнере — 1–1¾ минуты
-(1121 тест за 96 с), при лимите 10 минут. Код выхода 0 —
+сборка образа занимает около 20 секунд, проверка в контейнере — около 2¼ минут
+(1272 теста за 129 с), при лимите 10 минут. Код выхода 0 —
 всё прошло. Ход проверки печатается в терминал, итоговый отчёт пишется в
 `runs/check-<id>/validation.json` внутри контейнера (там же `acceptance.json` и
 `junit.xml`). Чтобы сохранить отчёт на хосте, подключите папку:
@@ -52,6 +52,24 @@ python -m auditgym.runner.demo
 ```
 
 Для каждого прогона runner и validate нужна новая папка вывода.
+
+## Проверки жюри
+
+Адаптер — [`judge_adapter.py`](judge_adapter.py) в корне (в контейнере рабочая директория `/app`):
+`generate_episode(seed, config, output_dir)`, `make_env()`, `score_episode(episode_dir, findings, inspection_steps)`.
+Схемы наблюдений, правила ID, типы ошибок с допусками и настройки сценариев D01–D20 —
+в [`docs/judge.md`](docs/judge.md). Проверить подключение:
+
+```bash
+docker run --rm --network none --cpus 2 --memory 4g audit-rl-env python -m pytest -q tests/judge
+```
+
+| Тип | Что значит | `affected_ids` | Допуск |
+| --- | --- | --- | ---: |
+| `duplicate_invoice` | повторное отражение счёта | `[счёт-дубль]` | 0 |
+| `payment_allocation` | платёж не распределён или распределён частично | `[платёж, счёт]` | 0 |
+| `fx_conversion` | курс не той даты | `[документ]` | 1 |
+| `period_cutoff` | документ не того периода | `[документ]` | 0 |
 
 ## Версии и зависимости
 
@@ -178,7 +196,8 @@ HTTP-тесты входят в `make check`; отдельный job `web-ui` п
 | `auditgym/runner/` | прогон эпизодов, `trajectories.jsonl`, отчёт |
 | `schemas/` | JSON Schema всех форматов |
 | `configs/`, `episodes/` | train/dev конфиги и эпизоды |
-| `tests/` | тесты модулей и приёмочный набор |
+| `judge_adapter.py` | подключение для проверок жюри (`docs/judge.md`) |
+| `tests/` | тесты модулей, приёмочный набор и определения жюри (`tests/judge/`) |
 | `artifacts/` | закоммиченные траектории, результаты и разбор сбоев |
 | `tools/` | `failure_analysis.py`, `summarize_results.py`, проверки UI и wheel |
 

@@ -67,8 +67,14 @@ def _read_csv(path: Path) -> list[dict]:
         return [{k: (v if v != "" else None) for k, v in row.items()} for row in csv.DictReader(f)]
 
 
+def _part(episode_dir: str | Path, part: str) -> Path:
+    """``<dir>/<part>`` or, for a flat episode directory, ``<dir>`` itself."""
+    nested = Path(episode_dir) / part
+    return nested if nested.is_dir() else Path(episode_dir)
+
+
 def load_public(episode_dir: str | Path) -> dict:
-    pub = Path(episode_dir) / "public"
+    pub = _part(episode_dir, "public")
     ledger = _read_csv(pub / "ledger.csv")
     for r in ledger:
         r["debit_minor"] = int(r["debit_minor"])
@@ -84,7 +90,7 @@ def load_public(episode_dir: str | Path) -> dict:
 
 
 def load_private(episode_dir: str | Path) -> dict:
-    priv = Path(episode_dir) / "private"
+    priv = _part(episode_dir, "private")
     return {
         "truth": json.loads((priv / "truth.json").read_text(encoding="utf-8")),
         "provenance": json.loads((priv / "provenance.json").read_text(encoding="utf-8")),

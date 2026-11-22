@@ -73,7 +73,8 @@ def main(argv=None):
         parser.error("--out must be a new directory")
     python = sys.executable
     stages = [
-        ("lint", [python, "-m", "ruff", "check", "--no-cache", "auditgym", "tests"]),
+        ("lint", [python, "-m", "ruff", "check", "--no-cache", "auditgym", "tests",
+                  "judge_adapter.py"]),
         ("tests_and_acceptance", [python, "-m", "pytest", "-q", "-p", "no:cacheprovider",
                                   "--basetemp", str(out / "pytest-temp"),
                                   "--acceptance-report", str(out / "acceptance.json"),

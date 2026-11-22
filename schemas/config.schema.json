@@ -476,6 +476,13 @@
           "description": "int or inclusive range [lo, hi], sampled per seed"
         }
       }
+    },
+    "allocation_mode": {
+      "enum": [
+        "missing",
+        "partial"
+      ],
+      "description": "Optional. Kind of standalone payment_allocation errors; absent = chosen by the seed."
     }
   }
 }
