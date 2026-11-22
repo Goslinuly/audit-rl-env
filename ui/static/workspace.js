@@ -811,6 +811,60 @@
       return "Расхождений нет: в этой проверке ошибок не было, агент ничего не пропустил (F1 = 1)";
     return "Агент ничего не нашёл, но пропустил расхождений: " + m.fn;
   }
+  const EVIDENCE_KINDS = { ledger: "проводка", invoices: "счёт", payments: "платёж" };
+  function humanId(id) {
+    const [table, rest] = String(id).split(/:(.*)/s);
+    if (table === "fx") {
+      const [date, from, to] = (rest || "").split("/");
+      return "курс " + from + "/" + to + " на " + date.split("-").reverse().join(".");
+    }
+    return (EVIDENCE_KINDS[table] ? EVIDENCE_KINDS[table] + " " : "") + (rest ?? id);
+  }
+  function docxModel(r) {
+    const m = publicData.manifest,
+      x = r.metrics || {},
+      pct = (v) => (v == null ? "—" : Math.round(v * 100) + " %");
+    const types = [...new Set(r.findings.map((f) => f.type))];
+    return {
+      title: "Отчёт о проверке расчётов",
+      subtitle: r.company + " · " + monthName(m.period_start),
+      details: [
+        ["Компания", r.company],
+        ["Отчётный период", monthName(m.period_start)],
+        ["Проверка", r.episode_id + " · " + sourceLabel(selected)],
+        ["Агент", r.policy + (r.privileged ? " (видит эталонный ответ)" : "")],
+        ["Документы", number(m.counts.invoices) + " счетов, " + number(m.counts.payments) + " платежей"],
+        ["Проводки", number(m.counts.ledger_rows) + " · валюта учёта " + m.base_currency],
+        ["Дата отчёта", new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })],
+        ["Содержание", el("report-scope").value === "confirmed" ? "только подтверждённые" : "все расхождения"],
+      ],
+      metrics: [
+        ["Расхождений в отчёте", String(r.findings.length)],
+        ["F1", x.f1 == null ? "—" : number(x.f1), "общая оценка, от 0 до 1"],
+        ["Точность", x.tp + x.fp ? pct(x.precision) : "—", "доля верных находок"],
+        ["Полнота", x.tp + x.fn ? pct(x.recall) : "—", "доля найденных ошибок"],
+        ["Награда", x.reward == null ? "—" : number(x.reward), "с учётом числа шагов"],
+      ],
+      verdict: r.metrics
+        ? "Верно найдено: " + x.tp + " · ложных находок: " + x.fp + " · пропущено: " + x.fn +
+          " · шагов: " + x.steps + " из 100."
+        : "",
+      findings: r.findings.map((f) => ({
+        type: names[f.type] || f.type,
+        documents: f.affected_ids.map((id) => String(id).replace(/^[a-z]+:/, "")).join("\n"),
+        amount: money(f.claimed_amount_minor, f.currency),
+        evidence: f.evidence_ids.map(humanId).join("\n"),
+        status: f.manually_confirmed ? "Подтверждено" : "К проверке",
+        confirmed: f.manually_confirmed,
+      })),
+      emptyText: emptyReportText(r.metrics),
+      hints: types.map((t) => [names[t] || t, TYPE_HINTS[t] || ""]),
+      footnote:
+        "Статус «Подтверждено» ставится вручную в браузере и на оценку не влияет. " +
+        "Компании и документы вымышлены, отчёт сформирован автоматически.",
+      footer: "auditgym · " + r.company + " · " + r.episode_id,
+    };
+  }
   function reportText(r) {
     return [
       r.company,
@@ -1014,13 +1068,15 @@
       .map((row) => row.map(cell).join(","))
       .join("\r\n");
     const text =
-      format === "json"
+      format === "docx"
+        ? window.auditgymDocx(docxModel(r))
+        : format === "json"
         ? JSON.stringify(r, null, 2)
         : format === "csv"
           ? "\ufeff" + csv
           : reportText(r);
     const url = URL.createObjectURL(
-      new Blob([text], {
+      text instanceof Blob ? text : new Blob([text], {
         type:
           format === "json"
             ? "application/json;charset=utf-8"

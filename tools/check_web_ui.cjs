@@ -158,13 +158,22 @@ const fs = require("node:fs"),
       "confirmed report filter",
       (await p.locator("#ag-report-findings tr").count()) === 1,
     );
-    for (const format of ["txt", "csv", "json"]) {
+    for (const format of ["docx", "csv", "json"]) {
       await p.locator("#ag-report-format").selectOption(format);
       const dl = p.waitForEvent("download");
       await p.locator("#ag-report-download").click();
       const d = await dl;
       const content = fs.readFileSync(await d.path(), "utf8");
       ok("download " + format, content.length > 100);
+      if (format === "docx") {
+        ok(
+          "word report",
+          d.suggestedFilename().endsWith(".docx") &&
+            content.startsWith("PK") &&
+            content.includes("word/document.xml") &&
+            content.includes("Найденные расхождения"),
+        );
+      }
       if (format === "json") {
         const report = JSON.parse(content);
         ok(
