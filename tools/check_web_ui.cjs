@@ -39,7 +39,30 @@ const fs = require("node:fs"),
       await p.evaluate(
         () =>
           getComputedStyle(document.body).margin === "0px" &&
-          getComputedStyle(document.body).backgroundColor === "rgb(8, 15, 28)",
+          getComputedStyle(document.body).backgroundColor === "rgb(238, 243, 246)",
+      ),
+    );
+    await p.locator("#ag-theme").click();
+    ok(
+      "dark theme toggle",
+      await p.evaluate(
+        () =>
+          document.documentElement.dataset.theme === "dark" &&
+          getComputedStyle(document.body).backgroundColor === "rgb(8, 15, 28)" &&
+          localStorage.getItem("auditgym.theme") === "dark",
+      ),
+    );
+    await p.reload();
+    await p.waitForFunction(
+      () =>
+        document.documentElement.dataset.theme === "dark" &&
+        document.querySelector("#ag-status").textContent.includes("Данные загружены"),
+    );
+    await p.locator("#ag-theme").click();
+    ok(
+      "light theme toggle",
+      await p.evaluate(
+        () => getComputedStyle(document.body).backgroundColor === "rgb(238, 243, 246)",
       ),
     );
     ok("icons loaded", (await p.locator(".ag-navigation svg").count()) === 6);

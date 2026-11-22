@@ -136,7 +136,7 @@
   }
   function status(message, error = false) {
     el("status").textContent = message;
-    el("status").style.color = error ? "#ffa5ad" : "";
+    el("status").style.color = error ? "var(--ag-error)" : "";
   }
   async function api(path, body) {
     const response = await fetch(path, {
@@ -1211,5 +1211,17 @@
       );
     }
   }
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    el("theme").textContent = theme === "dark" ? "Светлая тема" : "Тёмная тема";
+  }
+  el("theme").addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try {
+      localStorage.setItem("auditgym.theme", next);
+    } catch {}
+  });
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
   init();
 })();
