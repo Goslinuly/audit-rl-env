@@ -27,8 +27,8 @@
       (o.bold ? "<w:b/>" : "") +
       (o.caps ? "<w:caps/>" : "") +
       (o.color ? `<w:color w:val="${o.color}"/>` : "") +
-      (o.size ? `<w:sz w:val="${o.size}"/><w:szCs w:val="${o.size}"/>` : "") +
       (o.spacing ? `<w:spacing w:val="${o.spacing}"/>` : "") +
+      (o.size ? `<w:sz w:val="${o.size}"/><w:szCs w:val="${o.size}"/>` : "") +
       "";
     return String(text ?? "")
       .split("\n")
@@ -63,9 +63,10 @@
       ? '<w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/>'
       : `<w:top w:val="single" w:sz="4" w:color="${LINE}"/><w:left w:val="nil"/><w:bottom w:val="single" w:sz="4" w:color="${LINE}"/><w:right w:val="nil"/><w:insideH w:val="single" w:sz="4" w:color="${LINE}"/><w:insideV w:val="nil"/>`;
     return (
-      `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:tblLayout w:type="fixed"/>` +
-      `<w:tblBorders>${b}</w:tblBorders>` +
+      // Child order follows CT_TblPr: tblW, tblCellSpacing, tblBorders, tblLayout.
+      `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/>` +
       (o.cellSpacing ? `<w:tblCellSpacing w:w="${o.cellSpacing}" w:type="dxa"/>` : "") +
+      `<w:tblBorders>${b}</w:tblBorders><w:tblLayout w:type="fixed"/>` +
       `</w:tblPr><w:tblGrid>${widths.map((w) => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>` +
       rows
         .map(
@@ -211,6 +212,7 @@
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
         '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
         '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+        '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>' +
         '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' +
         '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>',
       "_rels/.rels":
@@ -224,9 +226,14 @@
       "word/_rels/document.xml.rels":
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
-        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>',
+        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>' +
+        '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/></Relationships>',
       "word/document.xml": documentXml(m),
       "word/styles.xml": STYLES,
+      // Without compatibilityMode 15 Word opens the file in "compatibility mode".
+      "word/settings.xml":
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+        '<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>',
       "word/footer1.xml": footerXml(m),
     };
   }

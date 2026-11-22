@@ -1069,12 +1069,16 @@
       .join("\r\n");
     const text =
       format === "docx"
-        ? window.auditgymDocx(docxModel(r))
+        ? window.auditgymDocx?.(docxModel(r))
         : format === "json"
         ? JSON.stringify(r, null, 2)
         : format === "csv"
           ? "\ufeff" + csv
           : reportText(r);
+    if (text === undefined) {
+      status("Не удалось собрать документ Word — обновите страницу", true);
+      return;
+    }
     const url = URL.createObjectURL(
       text instanceof Blob ? text : new Blob([text], {
         type:

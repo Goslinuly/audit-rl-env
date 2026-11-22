@@ -142,6 +142,12 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(STATIC), **kwargs)
 
+    def end_headers(self):
+        # Static files must be revalidated, or a browser can pair a new page with stale scripts.
+        if "Cache-Control" not in "".join(h.decode("latin-1") for h in getattr(self, "_headers_buffer", [])):
+            self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def log_message(self, fmt, *args):  # quieter logs
         sys.stderr.write("%s %s\n" % (self.command, self.path))
 
