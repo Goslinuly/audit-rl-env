@@ -800,10 +800,16 @@
             esc(f.manually_confirmed ? "Подтверждён" : "К проверке") +
             "</td></tr>",
         )
-        .join("") || empty(4, "Отчёт пуст");
+        .join("") || empty(4, emptyReportText(r.metrics));
     el("report-preview").textContent = reportText(r);
     el("report-filename").textContent = filename();
     el("report-download").disabled = !run();
+  }
+  function emptyReportText(m) {
+    if (!m) return "Агент ещё не запускался — нажмите «Запустить проверку»";
+    if (!m.fn)
+      return "Расхождений нет: в этой проверке ошибок не было, агент ничего не пропустил (F1 = 1)";
+    return "Агент ничего не нашёл, но пропустил расхождений: " + m.fn;
   }
   function reportText(r) {
     return [
@@ -812,6 +818,7 @@
       "Политика: " + r.policy,
       "Оценка: " + JSON.stringify(r.metrics),
       "Отметки «подтверждено» поставлены вручную и на оценку не влияют",
+      ...(r.findings.length ? [] : [emptyReportText(r.metrics)]),
       ...r.findings.map(
         (f) =>
           names[f.type] +
