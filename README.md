@@ -127,8 +127,8 @@ Runner использует настоящие `AuditEnv` и `Grader`. Поли�
 устройство среды — [`DESIGN.md`](DESIGN.md).
 
 Запись терминального демо на 135 секунд: `docs/demo/participant4.cast`
-(`asciinema play docs/demo/participant4.cast`), метрики того же прогона —
-`docs/demo/participant4.json`. Это результаты реального прогона на `sample_00`
+(`asciinema play docs/demo/participant4.cast`), записана на среде 0.1.0. Метрики,
+пересчитанные на текущих версиях, — `docs/demo/participant4.json`. Запись показывает результаты реального прогона на `sample_00`
 с паузами для чтения, а не имитация времени агента. Для новой записи:
 `python -m auditgym.runner.demo --record runs/demo/demo.cast --duration 135`.
 
@@ -154,9 +154,9 @@ Runner использует настоящие `AuditEnv` и `Grader`. Поли�
 **[Запустить в GitHub Codespaces](https://codespaces.new/Goslinuly/audit-rl-env?quickstart=1)**.
 Создайте codespace из `main`; конфигурация установит зависимости и запустит
 интерфейс на порту 8000. Если вкладка не открылась, выберите **Ports → 8000 → Open in Browser**.
-Нужны доступ к репозиторию и доступные ресурсы Codespaces в аккаунте GitHub.
+Нужны доступные ресурсы Codespaces в аккаунте GitHub.
 
-![Cyberpunk-интерфейс auditgym на реальном эпизоде команды](docs/screenshots/workspace.png)
+![Веб-интерфейс auditgym на эпизоде sample_00](docs/screenshots/workspace.png)
 
 Скачайте репозиторий через **Code → Download ZIP**, распакуйте и откройте терминал
 в его папке. Требуется Python 3.11 или новее (интерфейс только просматривает
@@ -167,8 +167,8 @@ python -m pip install -e ".[dev]"
 python ui/server.py
 ```
 
-Откройте **http://localhost:8000**. Cyberpunk-интерфейс содержит страницы
-«Обзор», «Компании», «Эпизоды», «Расследование», «Сравнение агентов» и «Отчёты».
+Откройте **http://localhost:8000**. Страницы: «Обзор», «Компании», «Проверки»,
+«Документы», «Агенты» и «Отчёт»; есть светлая и тёмная тема.
 Документы и генерация по всем пресетам/seed работают через API команды.
 Запуск агента и сравнение используют настоящие AuditEnv, runner и grader.
 Oracle помечен как привилегированный эталон. Отчёт скачивается документом Word (.docx: реквизиты проверки, итоговые метрики, таблица расхождений с доказательствами), а также в CSV и JSON.
