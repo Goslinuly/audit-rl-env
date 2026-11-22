@@ -11,12 +11,16 @@ API
     GET /api/episodes/<split>/<name>       public records + reference (open splits only)
     GET /api/generate?preset=..&seed=..    fresh episode, not written to disk
     GET /healthz
+
+Pages
+    /video          demo video        /presentation   slides (PDF)
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -34,11 +38,15 @@ from auditgym.generator import (  # noqa: E402
 )
 
 STATIC = ROOT / "ui" / "static"
+MEDIA = STATIC.resolve() / "media"
 EPISODES = ROOT / "episodes"
 PRESETS = ROOT / "configs" / "presets"
 OPEN_SPLITS = ("sample", "train", "dev")
 MAX_SEED = 10**9
 RUN_SLOTS = threading.BoundedSemaphore(2)
+PAGES = {"/video": "/video.html", "/presentation": "/media/auditgym-presentation.pdf"}
+RANGE = re.compile(r"bytes=(\d*)-(\d*)")
+CHUNK = 64 * 1024
 UI_VERSION = "cyberpunk-api-1"
 
 
@@ -163,6 +171,59 @@ class Handler(SimpleHTTPRequestHandler):
     def error_json(self, status, message):
         self.send_json({"error": message}, status)
 
+    def translate_path(self, path):
+        clean = urlparse(path).path
+        return super().translate_path(PAGES.get(clean.rstrip("/"), clean))
+
+    def send_media(self, file: Path, *, head: bool = False) -> None:
+        """A media file with single-range support (Safari does not play video without it)."""
+        size = file.stat().st_size
+        start, end, status = 0, size - 1, HTTPStatus.OK
+        match = RANGE.fullmatch((self.headers.get("Range") or "").strip())
+        if match and any(match.groups()):
+            first, last = match.groups()
+            if first:
+                start = int(first)
+                end = min(int(last), size - 1) if last else size - 1
+            else:
+                start = max(0, size - int(last))
+            if start >= size or start > end:
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            status = HTTPStatus.PARTIAL_CONTENT
+        self.send_response(status)
+        self.send_header("Content-Type", self.guess_type(str(file)))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.send_header("Content-Disposition", f'inline; filename="{file.name}"')
+        if status == HTTPStatus.PARTIAL_CONTENT:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.end_headers()
+        if head:
+            return
+        left = end - start + 1
+        with file.open("rb") as fh:
+            fh.seek(start)
+            while left > 0 and (chunk := fh.read(min(CHUNK, left))):
+                try:
+                    self.wfile.write(chunk)
+                except (BrokenPipeError, ConnectionResetError):  # the player closed the stream
+                    return
+                left -= len(chunk)
+
+    def media_file(self) -> Path | None:
+        file = Path(self.translate_path(self.path)).resolve()
+        return file if file.parent == MEDIA and file.is_file() else None
+
+    def do_HEAD(self):  # noqa: N802
+        media = self.media_file()
+        if media:
+            return self.send_media(media, head=True)
+        return super().do_HEAD()
+
     def do_POST(self):  # noqa: N802
         if urlparse(self.path).path != "/api/run":
             return self.error_json(HTTPStatus.NOT_FOUND, "unknown endpoint")
@@ -225,7 +286,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.error_json(HTTPStatus.INTERNAL_SERVER_ERROR, f"generation failed: {exc}")
         if path.startswith("/api/"):
             return self.error_json(HTTPStatus.NOT_FOUND, "unknown endpoint")
-        if path != "/" and not (STATIC / path.lstrip("/")).is_file():
+        media = self.media_file()
+        if media:
+            return self.send_media(media)
+        if path != "/" and path.rstrip("/") not in PAGES and not (STATIC / path.lstrip("/")).is_file():
             self.path = "/"  # single-page app fallback
         return super().do_GET()
 

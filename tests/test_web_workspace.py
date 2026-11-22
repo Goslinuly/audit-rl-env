@@ -114,3 +114,36 @@ def test_codespaces_forwarded_origin(web, monkeypatch, valid):
         with pytest.raises(HTTPError) as error:
             request(web, "/api/run", body, {"Origin": "https://" + host})
         assert error.value.code == 403
+
+
+def raw(web, route, method="GET", **headers):
+    with urlopen(Request(web + route, method=method, headers=headers), timeout=30) as response:
+        return response.status, response.headers, response.read()
+
+
+def test_video_and_presentation(web):
+    status, headers, body = raw(web, "/video")
+    assert status == 200 and headers["Content-Type"].startswith("text/html")
+    assert b"/media/auditgym-demo.mp4" in body
+    for route, kind, magic in (("/presentation", "application/pdf", b"%PDF"),
+                               ("/presentation/", "application/pdf", b"%PDF"),
+                               ("/media/auditgym-demo.mp4", "video/mp4", b"ftyp")):
+        status, headers, body = raw(web, route)
+        assert status == 200 and headers["Content-Type"] == kind and magic in body[:16]
+        assert len(body) == int(headers["Content-Length"])
+        assert raw(web, route, "HEAD")[1]["Content-Length"] == headers["Content-Length"]
+        for value, part in (("bytes=0-1", body[:2]), ("bytes=10-", body[10:]),
+                            ("bytes=-5", body[-5:]), (f"bytes=5-{len(body) * 2}", body[5:])):
+            status, got, data = raw(web, route, Range=value)
+            assert status == 206 and data == part and got["Accept-Ranges"] == "bytes"
+            assert got["Content-Range"].endswith(f"/{len(body)}")
+    with pytest.raises(HTTPError) as error:
+        raw(web, "/media/auditgym-demo.mp4", Range="bytes=999999999-")
+    assert error.value.code == 416
+    for route in ("/media/../../server.py", "/media/%2e%2e/%2e%2e/server.py", "/media/nope.mp4"):
+        try:
+            body = raw(web, route)[2]
+        except HTTPError as exc:
+            assert exc.code == 404
+        else:
+            assert b"def send_media" not in body
